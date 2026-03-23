@@ -1,17 +1,11 @@
 package com.healio.patientservice.controller;
 
-import com.healio.patientservice.dto.AdvertDto;
-import com.healio.patientservice.enums.Advertiser;
-import com.healio.patientservice.request.advert.AdvertCreateRequest;
-import com.healio.patientservice.request.advert.AdvertUpdateRequest;
-import com.healio.patientservice.service.AdvertService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
 import java.util.List;

@@ -4,8 +4,10 @@
   "description": "AI-Enabled Smart Healthcare Appointment & Telemedicine Platform",
   "main": "index.js",
   "scripts": {
-    "install": "npm run mvn:install",
-    "build": "npm run mvn:build",
+    "install:maven": "mvn clean install -DskipTests",
+    "install:client": "cd client && npm install",
+    "install": "npm run install:maven && npm run install:client",
+    "build": "mvn clean package -DskipTests",
     "start": "node scripts/sequential-startup.js",
     "dev": "node scripts/sequential-startup.js",
     "stop": "pkill -f 'mvn spring-boot:run' || true",
