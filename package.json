@@ -1,12 +1,26 @@
 {
   "name": "Healio",
   "version": "1.0.0",
-  "description": "",
+  "description": "AI-Enabled Smart Healthcare Appointment & Telemedicine Platform",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "install": "npm run mvn:install",
+    "build": "npm run mvn:build",
+    "start": "node scripts/sequential-startup.js",
+    "dev": "node scripts/sequential-startup.js",
+    "stop": "pkill -f 'mvn spring-boot:run' || true",
+    "test": "npm run mvn:test",
+    "mvn:install": "mvn clean install -DskipTests",
+    "mvn:build": "mvn clean package -DskipTests",
+    "mvn:test": "mvn clean test"
   },
-  "keywords": [],
+  "keywords": [
+    "healthcare",
+    "telemedicine",
+    "appointments",
+    "spring-boot",
+    "microservices"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
