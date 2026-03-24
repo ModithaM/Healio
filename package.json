@@ -5,13 +5,13 @@
   "main": "index.js",
   "scripts": {
     "install:maven": "mvn clean install -DskipTests",
-    "install:client": "cd client && npm install",
-    "install": "npm run install:maven && npm run install:client",
+    "install:client": "cd client && pnpm install",
+    "install": "pnpm run install:maven && pnpm run install:client",
     "build": "mvn clean package -DskipTests",
     "start": "node scripts/sequential-startup.js",
     "dev": "node scripts/sequential-startup.js",
     "stop": "pkill -f 'mvn spring-boot:run' || true",
-    "test": "npm run mvn:test",
+    "test": "pnpm run mvn:test",
     "mvn:install": "mvn clean install -DskipTests",
     "mvn:build": "mvn clean package -DskipTests",
     "mvn:test": "mvn clean test"
