@@ -11,6 +11,7 @@
     <description>Healio - AI-Enabled Smart Healthcare Appointment Telemedicine Platform</description>
 
     <modules>
+        <module>services/config-service</module>
         <module>services/discovery-service</module>
         <module>services/auth-service</module>
         <module>services/user-service</module>

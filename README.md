@@ -14,6 +14,8 @@ All backend services are implemented using **Spring Boot** microservices archite
 
 | Service | Description |
 |---|---|
+| **config-service** | Centralized configuration server (Spring Cloud Config) — manages externalized configuration for all microservices |
+| **discovery-service** | Service Registry (Eureka) — enables dynamic service discovery and registration |
 | **gateway** | API Gateway (Spring Cloud Gateway) — single entry point that routes client requests to the appropriate microservices |
 | **auth-service** | Authentication & authorization service — handles user authentication, JWT tokens, and access control |
 | **user-service** | User management — manages user profiles, roles, and account settings |
@@ -21,7 +23,6 @@ All backend services are implemented using **Spring Boot** microservices archite
 | **doctor-service** | Handles doctor profiles, specializations, availability, and scheduling preferences |
 | **appointment-service** | Manages booking, cancellation, and tracking of healthcare appointments |
 | **telemedicine-service** | Enables virtual consultations, video sessions, and remote care between patients and doctors |
-| **discovery-service** | Service Registry (Eureka) — enables dynamic service discovery and registration |
 
 ---
 
@@ -29,18 +30,22 @@ All backend services are implemented using **Spring Boot** microservices archite
 
 ```
 Healio/
-├── client/                  # Frontend application
+├── client/                      # Frontend application
 ├── services/
-│   ├── gateway/             # API Gateway (Spring Cloud Gateway)
-│   ├── auth-service/        # Authentication service (Spring Boot)
-│   ├── user-service/        # User management service (Spring Boot)
-│   ├── patient-service/     # Patient management service (Spring Boot)
-│   ├── doctor-service/      # Doctor management service (Spring Boot)
-│   ├── appointment-service/ # Appointment management service (Spring Boot)
-│   ├── telemedicine-service/# Telemedicine service (Spring Boot)
-│   └── discovery-service/   # Eureka service registry (Spring Cloud)
-├── infra/                   # Infrastructure configuration (Docker, K8s, etc.)
-├── package.json             # Root project configuration
+│   ├── config-service/          # Configuration server (Spring Cloud Config)
+│   ├── discovery-service/       # Eureka service registry (Spring Cloud)
+│   ├── gateway/                 # API Gateway (Spring Cloud Gateway)
+│   ├── auth-service/            # Authentication service (Spring Boot)
+│   ├── user-service/            # User management service (Spring Boot)
+│   ├── patient-service/         # Patient management service (Spring Boot)
+│   ├── doctor-service/          # Doctor management service (Spring Boot)
+│   ├── appointment-service/     # Appointment management service (Spring Boot)
+│   └── telemedicine-service/    # Telemedicine service (Spring Boot)
+├── infra/                       # Infrastructure configuration (Docker, K8s, etc.)
+├── config/                      # Configuration files for services
+├── scripts/                     # Automation and deployment scripts
+├── package.json                 # Root project configuration
+├── pom.xml                      # Maven parent POM for all services
 └── README.md
 ```
 

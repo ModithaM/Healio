@@ -4,13 +4,15 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 // Startup order optimized for low-end laptops
-// 1. Discovery service first (Eureka registry) - others depend on it
-// 2. Auth service - core authentication
-// 3. User service - user management
-// 4. Gateway - API entry point (after core services are ready)
-// 5. Patient & Doctor services - domain services
-// 6. Appointment & Telemedicine services - dependent services
+// 1. Config server first (centralized configuration) - others depend on it
+// 2. Discovery service (Eureka registry) - others depend on it
+// 3. Auth service - core authentication
+// 4. User service - user management
+// 5. Gateway - API entry point (after core services are ready)
+// 6. Patient & Doctor services - domain services
+// 7. Appointment & Telemedicine services - dependent services
 const services = [
+  { name: 'config-service', port: 8888, waitTime: 6000 },
   { name: 'discovery-service', port: 8761, waitTime: 8000 },
   { name: 'auth-service', port: 8081, waitTime: 6000 },
   { name: 'user-service', port: 8082, waitTime: 6000 },
