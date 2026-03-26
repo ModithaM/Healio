@@ -4,9 +4,9 @@
   "description": "AI-Enabled Smart Healthcare Appointment & Telemedicine Platform",
   "main": "index.js",
   "scripts": {
-    "install:maven": "mvn clean install -DskipTests",
-    "install:client": "cd client && pnpm install",
-    "install": "pnpm run install:maven && pnpm run install:client",
+    "dependency:services": "mvn clean install -DskipTests",
+    "dependency:client": "cd client/healio && pnpm install",
+    "dependency": "pnpm run dependency:services && pnpm run dependency:client",
     "build": "mvn clean package -DskipTests",
     "start": "node scripts/sequential-startup.js",
     "dev": "node scripts/sequential-startup.js",

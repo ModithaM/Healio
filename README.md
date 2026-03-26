@@ -62,27 +62,27 @@ Healio/
 
 #### Install all dependencies and build all services:
 ```bash
-npm run install
+pnpm run dependency
 ```
 
 #### Build all Spring Boot services:
 ```bash
-npm run build
+pnpm run build
 ```
 
 #### Run all services:
 ```bash
-npm run start
+pnpm run start
 ```
 
 #### Run services in development mode (with hot reload):
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 #### Stop all running services:
 ```bash
-npm run stop
+pnpm run stop
 ```
 
 ### Individual Service Commands
