@@ -3,12 +3,11 @@ package com.healio.doctorservice.model;
 import lombok.*;
 
 import javax.persistence.*;
-import java.util.List;
 
-@Entity(name = "patients")
+@Entity(name = "doctors")
 @AllArgsConstructor
 @NoArgsConstructor
-public class Patient extends BaseEntity {
+public class Doctor extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
