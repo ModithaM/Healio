@@ -21,6 +21,22 @@ public class GatewayConfig {
                         .filters(f -> f.filter(filter))
                         .uri("lb://user-service"))
 
+                .route("user-service", r -> r.path("/v1/user/**")
+                        .filters(f -> f.filter(filter))
+                        .uri("lb://doctor-service"))
+
+                .route("user-service", r -> r.path("/v1/user/**")
+                        .filters(f -> f.filter(filter))
+                        .uri("lb://patient-service"))
+
+                .route("user-service", r -> r.path("/v1/user/**")
+                        .filters(f -> f.filter(filter))
+                        .uri("lb://appointment-service"))
+
+                .route("user-service", r -> r.path("/v1/user/**")
+                        .filters(f -> f.filter(filter))
+                        .uri("lb://telemedicine-service"))
+
                 .route("auth-service", r -> r.path("/v1/auth/**")
                         .uri("lb://auth-service"))
 
