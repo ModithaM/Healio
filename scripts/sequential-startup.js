@@ -12,15 +12,15 @@ const path = require('path');
 // 6. Patient & Doctor services - domain services
 // 7. Appointment & Telemedicine services - dependent services
 const services = [
-  { name: 'config-service', port: 8888, waitTime: 6000 },
-  { name: 'discovery-service', port: 8761, waitTime: 8000 },
-  { name: 'auth-service', port: 8081, waitTime: 6000 },
-  { name: 'user-service', port: 8082, waitTime: 6000 },
-  { name: 'gateway', port: 8080, waitTime: 6000 },
-  { name: 'patient-service', port: 8083, waitTime: 5000 },
-  { name: 'doctor-service', port: 8084, waitTime: 5000 },
-  { name: 'appointment-service', port: 8085, waitTime: 5000 },
-  { name: 'telemedicine-service', port: 8086, waitTime: 5000 }
+  { name: 'config-service', waitTime: 6000 },
+  { name: 'discovery-service', waitTime: 8000 },
+  { name: 'auth-service', waitTime: 6000 },
+  { name: 'user-service', waitTime: 6000 },
+  { name: 'gateway', waitTime: 6000 },
+  { name: 'patient-service', waitTime: 5000 },
+  { name: 'doctor-service', waitTime: 5000 },
+  { name: 'appointment-service', waitTime: 5000 },
+  { name: 'telemedicine-service', waitTime: 5000 }
 ];
 
 let runningProcesses = [];
@@ -44,7 +44,7 @@ const startService = (service, index) => {
 
     // Wait for service to start and stabilize
     setTimeout(() => {
-      console.log(`✅ ${service.name} started (port: ${service.port}). Waiting ${service.waitTime / 1000}s before next service...`);
+      console.log(`✅ ${service.name} started. Waiting ${service.waitTime / 1000}s before next service...`);
       resolve();
     }, service.waitTime);
   });
@@ -61,9 +61,6 @@ const startAllServices = async () => {
   console.log('\n' + '═'.repeat(70));
   console.log('✅ All services started!');
   console.log('\nService URLs:');
-  services.forEach(service => {
-    console.log(`  • ${service.name}: http://localhost:${service.port}`);
-  });
   console.log('\n📋 To stop all services, press Ctrl+C or run: npm run stop');
   console.log('═'.repeat(70) + '\n');
 };
