@@ -1,9 +1,9 @@
 package com.healio.doctorservice.model;
 
-import com.healio.doctorservice.enums.DayOfWeek;
 import lombok.*;
 
 import javax.persistence.*;
+import java.time.DayOfWeek;
 import java.time.LocalTime;
 
 @Entity(name = "doctor_availability")
