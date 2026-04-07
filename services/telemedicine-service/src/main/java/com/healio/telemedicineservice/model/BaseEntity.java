@@ -1,4 +1,4 @@
-package com.healio.doctorservice.model;
+package com.healio.telemedicineservice.model;
 
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;

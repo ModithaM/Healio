@@ -1,6 +1,5 @@
 package com.healio.appointmentservice.model;
 
-
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.GenericGenerator;
