@@ -1,51 +1,79 @@
 package com.healio.patientservice.controller;
 
+import com.healio.patientservice.dto.MedicalDocumentResponseDto;
+import com.healio.patientservice.dto.PatientProfileCreateRequest;
+import com.healio.patientservice.dto.PatientProfileResponseDto;
+import com.healio.patientservice.dto.PatientProfileUpdateRequest;
+import com.healio.patientservice.service.PatientService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.List;
 
 @RestController
 @RequestMapping("/v1/patient-service/")
 @RequiredArgsConstructor
 public class PatientController {
-//    private final AdvertService advertService;
-//    private final ModelMapper modelMapper;
-//
-//    @PostMapping("/create")
-//    public ResponseEntity<AdvertDto> createAdvert(@Valid @RequestPart AdvertCreateRequest request,
-//                                                  @RequestPart(required = false) MultipartFile file) {
-//        return ResponseEntity.status(HttpStatus.CREATED)
-//                .body(modelMapper.map(advertService.createAdvert(request, file), AdvertDto.class));
-//    }
-//
-//    @GetMapping("/getAll")
-//    public ResponseEntity<List<AdvertDto>> getAll() {
-//        return ResponseEntity.ok(advertService.getAll().stream()
-//                .map(advert -> modelMapper.map(advert, AdvertDto.class)).toList());
-//    }
-//
-//    @GetMapping("/getAdvertById/{id}")
-//    public ResponseEntity<AdvertDto> getAdvertById(@PathVariable String id) {
-//        return ResponseEntity.ok(modelMapper.map(advertService.getAdvertById(id), AdvertDto.class));
-//    }
-//
-//    @GetMapping("/getAdvertsByUserId/{id}")
-//    public ResponseEntity<List<AdvertDto>> getAdvertsByUserId(@PathVariable String id,
-//                                                              @RequestParam Advertiser type) {
-//        return ResponseEntity.ok(advertService.getAdvertsByUserId(id, type).stream()
-//                .map(advert -> modelMapper.map(advert, AdvertDto.class)).toList());
-//    }
-//
-//    @PutMapping("/update")
-//    @PreAuthorize("hasRole('ADMIN') or @advertService.authorizeCheck(#request.id, principal)")
-//    public ResponseEntity<AdvertDto> updateAdvertById(@Valid @RequestPart AdvertUpdateRequest request,
-//                                                      @RequestPart(required = false) MultipartFile file) {
-//        return ResponseEntity.ok(modelMapper.map(advertService.updateAdvertById(request, file), AdvertDto.class));
-//    }
-//
-//    @DeleteMapping("/deleteAdvertById/{id}")
-//    @PreAuthorize("hasRole('ADMIN') or @advertService.authorizeCheck(#id, principal)")
-//    public ResponseEntity<Void> deleteAdvertById(@PathVariable String id) {
-//        advertService.deleteAdvertById(id);
-//        return ResponseEntity.ok().build();
-//    }
+
+    private final PatientService patientService;
+
+    @PostMapping("/create")
+    public ResponseEntity<PatientProfileResponseDto> createPatientProfile(
+            @Valid @RequestBody PatientProfileCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(patientService.createPatientProfile(request));
+    }
+
+    @GetMapping("/getPatientById/{id}")
+    public ResponseEntity<PatientProfileResponseDto> getPatientProfileById(@PathVariable String id) {
+        return ResponseEntity.ok(patientService.getPatientProfileById(id));
+    }
+
+    @GetMapping("/getPatientByUserId/{userId}")
+    public ResponseEntity<PatientProfileResponseDto> getPatientProfileByUserId(@PathVariable String userId) {
+        return ResponseEntity.ok(patientService.getPatientProfileByUserId(userId));
+    }
+
+    @PutMapping("/update/{userId}")
+    public ResponseEntity<PatientProfileResponseDto> updatePatientProfile(
+            @PathVariable String userId,
+            @Valid @RequestBody PatientProfileUpdateRequest request) {
+        return ResponseEntity.ok(patientService.updatePatientProfile(userId, request));
+    }
+
+    @DeleteMapping("/deletePatientById/{userId}")
+    public ResponseEntity<Void> deletePatientProfile(@PathVariable String userId) {
+        patientService.deletePatientProfile(userId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/getAll")
+    public ResponseEntity<List<PatientProfileResponseDto>> getAllPatients() {
+        return ResponseEntity.ok(patientService.getAllPatients());
+    }
+
+    @PostMapping("/uploadDocument/{userId}")
+    public ResponseEntity<MedicalDocumentResponseDto> uploadMedicalDocument(
+            @PathVariable String userId,
+            @RequestParam String fileName,
+            @RequestParam String fileUrl) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(patientService.uploadMedicalDocument(userId, fileName, fileUrl));
+    }
+
+    @GetMapping("/getDocuments/{userId}")
+    public ResponseEntity<PatientProfileResponseDto> getPatientDocuments(@PathVariable String userId) {
+        return ResponseEntity.ok(patientService.getPatientProfileByUserId(userId));
+    }
+
+    @DeleteMapping("/deleteDocument/{userId}/{documentId}")
+    public ResponseEntity<Void> deleteMedicalDocument(
+            @PathVariable String userId,
+            @PathVariable String documentId) {
+        patientService.deleteMedicalDocument(userId, documentId);
+        return ResponseEntity.ok().build();
+    }
 }
