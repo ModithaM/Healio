@@ -1,0 +1,60 @@
+<svg width="720" height="900" viewBox="0 0 720 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+    @keyframes ring { 0%,100%{opacity:.25;transform:scale(.92)} 50%{opacity:.72;transform:scale(1.05)} }
+    @keyframes dash { to { stroke-dashoffset:-160; } }
+    .bob-a{animation:bob 4.8s ease-in-out infinite;transform-origin:center}
+    .bob-b{animation:bob 6s ease-in-out infinite reverse;transform-origin:center}
+    .ring{animation:ring 3.2s ease-in-out infinite;transform-origin:center}
+    .dash{stroke-dasharray:18 18;animation:dash 6s linear infinite}
+  </style>
+  <defs>
+    <linearGradient id="card" x1="100" y1="117" x2="608" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E0F2FE"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="192" y1="200" x2="534" y2="633" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0EA5E9"/>
+      <stop offset=".52" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#10B981"/>
+    </linearGradient>
+    <filter id="shadow2" x="54" y="83" width="612" height="732" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="22"/>
+      <feGaussianBlur stdDeviation="28"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.036 0 0 0 0 0.145 0 0 0 0 0.294 0 0 0 0.16 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_4"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_4" result="shape"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow2)">
+    <path d="M591 177C663 265 630 461 528 603C426 745 254 834 136 732C18 630 40 346 166 207C292 68 519 89 591 177Z" fill="#E0F7FF" fill-opacity=".76"/>
+    <rect x="116" y="124" width="488" height="638" rx="56" fill="url(#card)" stroke="white" stroke-width="16"/>
+    <path class="dash" d="M360 248C360 330 251 341 251 436C251 531 469 499 469 606" stroke="#0EA5E9" stroke-width="12" stroke-linecap="round"/>
+    <g class="bob-a">
+      <circle class="ring" cx="360" cy="248" r="76" fill="#0EA5E9"/>
+      <circle cx="360" cy="248" r="58" fill="url(#accent)"/>
+      <path d="M329 249H391M360 218V280" stroke="white" stroke-width="14" stroke-linecap="round"/>
+      <rect x="253" y="337" width="214" height="64" rx="24" fill="white" fill-opacity=".88"/>
+      <rect x="292" y="359" width="136" height="15" rx="7.5" fill="#0EA5E9" fill-opacity=".38"/>
+    </g>
+    <g class="bob-b">
+      <circle class="ring" cx="251" cy="436" r="68" fill="#10B981"/>
+      <circle cx="251" cy="436" r="52" fill="#10B981"/>
+      <path d="M224 437H278M251 410V464" stroke="white" stroke-width="12" stroke-linecap="round"/>
+      <rect x="326" y="426" width="172" height="52" rx="22" fill="white" fill-opacity=".9"/>
+      <rect x="359" y="445" width="106" height="13" rx="6.5" fill="#10B981" fill-opacity=".4"/>
+    </g>
+    <g class="bob-a" style="animation-delay:1s">
+      <circle class="ring" cx="469" cy="606" r="68" fill="#6366F1"/>
+      <circle cx="469" cy="606" r="52" fill="#6366F1"/>
+      <path d="M438 607H500M469 576V638" stroke="white" stroke-width="12" stroke-linecap="round"/>
+      <rect x="220" y="620" width="184" height="54" rx="22" fill="white" fill-opacity=".9"/>
+      <rect x="254" y="640" width="116" height="13" rx="6.5" fill="#6366F1" fill-opacity=".38"/>
+    </g>
+    <circle cx="140" cy="173" r="32" fill="#0EA5E9" fill-opacity=".2"/>
+    <circle cx="580" cy="739" r="38" fill="#10B981" fill-opacity=".2"/>
+  </g>
+</svg>
