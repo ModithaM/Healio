@@ -1,0 +1,45 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes floatSoft{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+    @keyframes growBar{0%,100%{transform:scaleY(.45)}50%{transform:scaleY(1)}}
+    @keyframes orbit{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+    .float-a{animation:floatSoft 6.5s ease-in-out infinite;transform-origin:center}
+    .float-b{animation:floatSoft 7.3s ease-in-out infinite reverse;transform-origin:center}
+    .bar{animation:growBar 3.4s ease-in-out infinite;transform-origin:bottom}
+    .orbit{animation:orbit 5.4s ease-in-out infinite;transform-origin:center}
+  </style>
+  <defs>
+    <linearGradient id="panel" x1="194" y1="168" x2="725" y2="716" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E0F2FE"/>
+      <stop offset=".55" stop-color="#EEF2FF"/>
+      <stop offset="1" stop-color="#DCFCE7"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="220" y1="150" x2="720" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0EA5E9"/>
+      <stop offset=".55" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+  <circle cx="450" cy="450" r="340" fill="#0EA5E9" fill-opacity=".16"/>
+  <circle cx="610" cy="620" r="230" fill="#10B981" fill-opacity=".14"/>
+  <g class="float-a">
+    <rect x="184" y="170" width="532" height="500" rx="64" fill="url(#panel)" fill-opacity=".95"/>
+    <rect x="244" y="234" width="412" height="82" rx="30" fill="url(#accent)"/>
+    <circle cx="300" cy="275" r="24" fill="white" fill-opacity=".25"/>
+    <path d="M286 275H314M300 261V289" stroke="white" stroke-width="9" stroke-linecap="round"/>
+    <rect x="354" y="260" width="220" height="14" rx="7" fill="white" fill-opacity=".72"/>
+    <rect x="264" y="382" width="112" height="160" rx="30" fill="white" fill-opacity=".76"/>
+    <rect x="424" y="382" width="112" height="160" rx="30" fill="white" fill-opacity=".76"/>
+    <rect x="584" y="382" width="72" height="160" rx="30" fill="white" fill-opacity=".76"/>
+    <rect class="bar" x="300" y="456" width="40" height="58" rx="20" fill="#0EA5E9"/>
+    <rect class="bar" x="460" y="426" width="40" height="88" rx="20" fill="#6366F1" style="animation-delay:.4s"/>
+    <rect class="bar" x="604" y="406" width="32" height="108" rx="16" fill="#10B981" style="animation-delay:.8s"/>
+  </g>
+  <g class="float-b">
+    <circle cx="348" cy="690" r="64" fill="#F7C7A8"/>
+    <path d="M288 686C294 626 344 602 396 630C421 644 430 671 420 700C384 688 362 664 352 634C334 665 313 682 288 686Z" fill="#12213B"/>
+    <path d="M254 812C270 745 307 720 348 720C389 720 426 745 442 812H254Z" fill="#0EA5E9"/>
+    <rect class="orbit" x="480" y="664" width="160" height="94" rx="32" fill="white" fill-opacity=".86"/>
+    <path d="M526 710H594M560 676V744" stroke="#10B981" stroke-width="15" stroke-linecap="round"/>
+  </g>
+</svg>

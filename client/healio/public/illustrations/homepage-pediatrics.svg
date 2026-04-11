@@ -1,0 +1,8 @@
+<svg width="900" height="700" viewBox="0 0 900 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}.float{animation:float 5.8s ease-in-out infinite;transform-origin:center}</style>
+  <defs><linearGradient id="bg" x1="116" y1="86" x2="770" y2="614" gradientUnits="userSpaceOnUse"><stop stop-color="#E0F2FE"/><stop offset=".55" stop-color="#EEF2FF"/><stop offset="1" stop-color="#DCFCE7"/></linearGradient><linearGradient id="accent" x1="286" y1="174" x2="640" y2="520" gradientUnits="userSpaceOnUse"><stop stop-color="#0EA5E9"/><stop offset=".55" stop-color="#6366F1"/><stop offset="1" stop-color="#10B981"/></linearGradient></defs>
+  <path d="M748 166C833 280 797 486 652 591C507 696 279 674 156 540C33 406 82 188 240 92C398 -4 663 52 748 166Z" fill="url(#bg)" fill-opacity=".86"/>
+  <rect x="222" y="130" width="456" height="420" rx="54" fill="white" fill-opacity=".94"/>
+  <g class="float"><circle cx="450" cy="302" r="82" fill="#F7C7A8"/><circle cx="423" cy="304" r="8" fill="#12213B"/><circle cx="477" cy="304" r="8" fill="#12213B"/><path d="M427 340C441 353 462 353 476 340" stroke="#12213B" stroke-width="9" stroke-linecap="round"/><path d="M370 286C384 232 454 213 512 254C497 281 474 294 450 294C426 294 403 285 370 286Z" fill="#12213B"/><path d="M326 502C345 421 389 392 450 392C511 392 555 421 574 502H326Z" fill="url(#accent)"/></g>
+  <rect x="548" y="220" width="76" height="76" rx="28" fill="#ECFDF5"/><path d="M566 258H606M586 238V278" stroke="#10B981" stroke-width="11" stroke-linecap="round"/>
+</svg>
