@@ -21,10 +21,8 @@ import {
   Clock3,
   Database,
   FileHeart,
-  FileText,
   HeartPulse,
   Hospital,
-  Laptop,
   LockKeyhole,
   Mail,
   MapPin,
@@ -79,8 +77,6 @@ const imageBank = {
   telemedicine: "/illustrations/homepage-telemedicine-suite.svg",
   digitalPrescriptions: "/illustrations/homepage-digital-prescriptions.svg",
   notifications: "/illustrations/homepage-notifications.svg",
-  reportUploads: "/illustrations/homepage-report-uploads.svg",
-  adminDashboard: "/illustrations/homepage-admin-dashboard.svg",
   cardiology: "/illustrations/homepage-cardiology.svg",
   neurology: "/illustrations/homepage-neurology.svg",
   pediatrics: "/illustrations/homepage-pediatrics.svg",
@@ -142,18 +138,6 @@ const services = [
     title: "Notifications & Alerts",
     description: "Automated reminders for appointments, lab reports, payments, and follow-up care.",
     image: imageBank.notifications,
-  },
-  {
-    icon: FileText,
-    title: "Medical Report Uploads",
-    description: "Upload reports, scans, and lab files into a secure patient timeline.",
-    image: imageBank.reportUploads,
-  },
-  {
-    icon: Laptop,
-    title: "Admin Dashboard",
-    description: "Track hospital operations, bookings, revenue signals, and care team performance.",
-    image: imageBank.adminDashboard,
   },
 ];
 
@@ -324,28 +308,6 @@ function Header({
 }) {
   return (
     <header className="fixed inset-x-0 top-0 z-50">
-      <div className="hidden border-b border-white/15 bg-slate-950 px-4 py-2 text-sm text-slate-200 dark:bg-black sm:block">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <InfoItem icon={Phone} text="Emergency: +94 77 245 8890" />
-            <InfoItem icon={Mail} text="care@healio.health" />
-            <InfoItem icon={MapPin} text="Colombo Digital Care Center" />
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold uppercase text-sky-200">Follow us</span>
-            {[FaFacebookF, FaInstagram, FaTwitter].map((Icon, index) => (
-              <Link
-                key={index}
-                href="#"
-                className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-white/80 transition hover:border-sky-300 hover:text-sky-300"
-              >
-                <Icon className="h-4 w-4" />
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <nav
         className={cn(
           "border-b px-4 py-4 transition duration-300 sm:px-6 lg:px-8",

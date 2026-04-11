@@ -1,0 +1,42 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes floatSoft{0%,100%{transform:translateY(0)}50%{transform:translateY(-20px)}}
+    @keyframes pulseRing{0%,100%{opacity:.22;transform:scale(.92)}50%{opacity:.72;transform:scale(1.08)}}
+    @keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
+    .float-a{animation:floatSoft 6.4s ease-in-out infinite;transform-origin:center}
+    .float-b{animation:floatSoft 7.4s ease-in-out infinite reverse;transform-origin:center}
+    .pulse{animation:pulseRing 3.5s ease-in-out infinite;transform-origin:center}
+    .blink{animation:blink 2s ease-in-out infinite}
+  </style>
+  <defs>
+    <linearGradient id="screen" x1="192" y1="190" x2="731" y2="682" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#0C4A6E"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="252" y1="184" x2="694" y2="740" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0EA5E9"/>
+      <stop offset=".55" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+  <circle class="pulse" cx="450" cy="450" r="330" fill="#0EA5E9" fill-opacity=".22"/>
+  <circle class="pulse" cx="610" cy="610" r="220" fill="#10B981" fill-opacity=".2" style="animation-delay:.6s"/>
+  <g class="float-a">
+    <rect x="162" y="182" width="576" height="430" rx="58" fill="url(#screen)"/>
+    <rect x="220" y="250" width="320" height="238" rx="42" fill="#E0F2FE"/>
+    <circle cx="380" cy="336" r="70" fill="#F7C7A8"/>
+    <path d="M313 332C321 260 374 232 434 265C462 281 474 312 465 352C424 338 397 311 384 274C364 312 342 328 313 332Z" fill="#12213B"/>
+    <circle cx="354" cy="350" r="8" fill="#12213B"/>
+    <circle cx="410" cy="350" r="8" fill="#12213B"/>
+    <path d="M360 390C375 402 396 402 412 390" stroke="#12213B" stroke-width="9" stroke-linecap="round"/>
+    <path d="M285 470C300 416 335 396 380 396C425 396 460 416 475 470H285Z" fill="white"/>
+    <rect x="574" y="272" width="108" height="32" rx="16" fill="#10B981"/>
+    <rect x="580" y="360" width="92" height="16" rx="8" fill="#E0F2FE" fill-opacity=".68"/>
+    <rect x="580" y="412" width="70" height="16" rx="8" fill="#E0F2FE" fill-opacity=".42"/>
+    <circle class="blink" cx="230" cy="230" r="10" fill="#22C55E"/>
+  </g>
+  <g class="float-b">
+    <rect x="280" y="640" width="340" height="84" rx="42" fill="url(#accent)"/>
+    <path d="M410 682H490M450 642V722" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  </g>
+</svg>
