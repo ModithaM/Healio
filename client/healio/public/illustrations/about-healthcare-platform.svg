@@ -1,0 +1,59 @@
+<svg width="900" height="900" viewBox="0 0 900 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes floatSoft { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
+    @keyframes pulseLine { 0%,100%{opacity:.42} 50%{opacity:1} }
+    @keyframes slideBar { 0%,100%{transform:scaleX(.65)} 50%{transform:scaleX(1)} }
+    .float-a{animation:floatSoft 5.6s ease-in-out infinite;transform-origin:center}
+    .float-b{animation:floatSoft 6.8s ease-in-out infinite reverse;transform-origin:center}
+    .pulse{animation:pulseLine 2.8s ease-in-out infinite}
+    .bar{animation:slideBar 4s ease-in-out infinite;transform-origin:left center}
+  </style>
+  <defs>
+    <linearGradient id="bg" x1="102" y1="88" x2="741" y2="811" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E0F2FE"/>
+      <stop offset=".55" stop-color="#EEF2FF"/>
+      <stop offset="1" stop-color="#DCFCE7"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="198" y1="232" x2="707" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0EA5E9"/>
+      <stop offset=".55" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#10B981"/>
+    </linearGradient>
+    <filter id="shadow" x="67" y="76" width="766" height="743" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="24"/>
+      <feGaussianBlur stdDeviation="30"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.036 0 0 0 0 0.145 0 0 0 0 0.294 0 0 0 0.17 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_3"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_3" result="shape"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <path d="M735 222C828 337 785 549 648 674C511 798 282 835 164 709C46 583 38 312 183 181C328 51 642 107 735 222Z" fill="url(#bg)" fill-opacity=".78"/>
+    <rect x="153" y="153" width="594" height="535" rx="52" fill="white" fill-opacity=".92"/>
+    <rect x="195" y="205" width="510" height="92" rx="28" fill="url(#blue)"/>
+    <circle cx="246" cy="251" r="25" fill="white" fill-opacity=".24"/>
+    <path d="M231 251H261M246 236V266" stroke="white" stroke-width="10" stroke-linecap="round"/>
+    <rect x="301" y="231" width="242" height="17" rx="8.5" fill="white" fill-opacity=".74"/>
+    <rect x="301" y="263" width="157" height="13" rx="6.5" fill="white" fill-opacity=".42"/>
+    <g class="float-a">
+      <rect x="205" y="337" width="217" height="146" rx="32" fill="#E0F2FE"/>
+      <path class="pulse" d="M237 411H278L299 373L333 450L360 411H391" stroke="#0EA5E9" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="239" y="449" width="121" height="16" rx="8" fill="#0EA5E9" fill-opacity=".28"/>
+    </g>
+    <g class="float-b">
+      <rect x="477" y="337" width="217" height="146" rx="32" fill="#ECFDF5"/>
+      <circle cx="540" cy="410" r="31" fill="#10B981" fill-opacity=".17"/>
+      <path d="M521 410H559M540 391V429" stroke="#10B981" stroke-width="11" stroke-linecap="round"/>
+      <rect x="592" y="382" width="70" height="15" rx="7.5" fill="#10B981" fill-opacity=".36"/>
+      <rect x="592" y="421" width="49" height="13" rx="6.5" fill="#64748B" fill-opacity=".22"/>
+    </g>
+    <rect x="205" y="532" width="489" height="105" rx="31" fill="#F8FAFC"/>
+    <rect class="bar" x="246" y="564" width="376" height="17" rx="8.5" fill="#0EA5E9" fill-opacity=".36"/>
+    <rect class="bar" x="246" y="604" width="295" height="17" rx="8.5" fill="#10B981" fill-opacity=".36" style="animation-delay:.8s"/>
+    <circle cx="218" cy="109" r="42" fill="#0EA5E9" fill-opacity=".2"/>
+    <circle cx="742" cy="679" r="52" fill="#10B981" fill-opacity=".18"/>
+  </g>
+</svg>

@@ -1,0 +1,8 @@
+<svg width="900" height="700" viewBox="0 0 900 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>@keyframes beat{0%,100%{transform:scale(1)}20%{transform:scale(1.08)}35%{transform:scale(.96)}55%{transform:scale(1.05)}}.beat{animation:beat 2.2s ease-in-out infinite;transform-origin:center}</style>
+  <defs><linearGradient id="bg" x1="116" y1="86" x2="770" y2="614" gradientUnits="userSpaceOnUse"><stop stop-color="#E0F2FE"/><stop offset=".55" stop-color="#EEF2FF"/><stop offset="1" stop-color="#DCFCE7"/></linearGradient><linearGradient id="accent" x1="300" y1="170" x2="610" y2="540" gradientUnits="userSpaceOnUse"><stop stop-color="#0EA5E9"/><stop offset=".52" stop-color="#6366F1"/><stop offset="1" stop-color="#10B981"/></linearGradient></defs>
+  <path d="M748 166C833 280 797 486 652 591C507 696 279 674 156 540C33 406 82 188 240 92C398 -4 663 52 748 166Z" fill="url(#bg)" fill-opacity=".86"/>
+  <rect x="214" y="132" width="472" height="420" rx="54" fill="white" fill-opacity=".94"/>
+  <path class="beat" d="M370 376C305 306 357 208 450 268C543 208 595 306 530 376L450 456L370 376Z" fill="url(#accent)"/>
+  <path d="M262 360H346L380 302L430 438L470 360H638" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

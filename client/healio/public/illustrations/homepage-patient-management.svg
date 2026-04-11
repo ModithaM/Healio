@@ -1,0 +1,20 @@
+<svg width="900" height="700" viewBox="0 0 900 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}@keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}.float{animation:float 6s ease-in-out infinite;transform-origin:center}.pulse{animation:pulse 2.8s ease-in-out infinite}</style>
+  <defs><linearGradient id="bg" x1="140" y1="80" x2="760" y2="620" gradientUnits="userSpaceOnUse"><stop stop-color="#E0F2FE"/><stop offset=".55" stop-color="#EEF2FF"/><stop offset="1" stop-color="#DCFCE7"/></linearGradient><linearGradient id="accent" x1="246" y1="150" x2="650" y2="540" gradientUnits="userSpaceOnUse"><stop stop-color="#0EA5E9"/><stop offset=".58" stop-color="#6366F1"/><stop offset="1" stop-color="#10B981"/></linearGradient></defs>
+  <path d="M746 168C836 282 797 487 654 592C511 697 280 677 156 541C32 405 83 188 239 92C395 -4 656 54 746 168Z" fill="url(#bg)" fill-opacity=".86"/>
+  <rect x="210" y="126" width="480" height="430" rx="50" fill="white" fill-opacity=".94"/>
+  <rect x="270" y="180" width="360" height="78" rx="28" fill="url(#accent)"/>
+  <circle cx="332" cy="219" r="26" fill="white" fill-opacity=".28"/>
+  <path d="M318 219H346M332 205V233" stroke="white" stroke-width="9" stroke-linecap="round"/>
+  <g class="float">
+    <circle cx="378" cy="370" r="62" fill="#F7C7A8"/>
+    <path d="M317 363C324 303 371 279 421 304C446 317 456 344 449 375C413 363 390 339 380 310C363 342 343 359 317 363Z" fill="#12213B"/>
+    <circle cx="357" cy="376" r="7" fill="#12213B"/><circle cx="402" cy="376" r="7" fill="#12213B"/>
+    <path d="M361 409C373 420 392 420 405 409" stroke="#12213B" stroke-width="8" stroke-linecap="round"/>
+    <path d="M282 522C297 461 330 437 378 437C426 437 461 461 476 522H282Z" fill="#0EA5E9"/>
+  </g>
+  <rect x="510" y="332" width="114" height="16" rx="8" fill="#0EA5E9" fill-opacity=".42"/>
+  <rect x="510" y="376" width="82" height="14" rx="7" fill="#6366F1" fill-opacity=".32"/>
+  <rect x="510" y="418" width="104" height="14" rx="7" fill="#10B981" fill-opacity=".34"/>
+  <path class="pulse" d="M290 282H610" stroke="#0EA5E9" stroke-width="12" stroke-linecap="round" stroke-opacity=".22"/>
+</svg>

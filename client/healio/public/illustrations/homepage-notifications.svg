@@ -1,0 +1,8 @@
+<svg width="900" height="700" viewBox="0 0 900 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>@keyframes ring{0%,100%{transform:rotate(0)}25%{transform:rotate(5deg)}75%{transform:rotate(-5deg)}}@keyframes ping{0%,100%{opacity:.2;transform:scale(.85)}50%{opacity:.75;transform:scale(1.08)}}.bell{animation:ring 2s ease-in-out infinite;transform-origin:450px 300px}.ping{animation:ping 2.8s ease-in-out infinite;transform-origin:center}</style>
+  <defs><linearGradient id="bg" x1="112" y1="86" x2="770" y2="616" gradientUnits="userSpaceOnUse"><stop stop-color="#E0F2FE"/><stop offset=".55" stop-color="#EEF2FF"/><stop offset="1" stop-color="#DCFCE7"/></linearGradient><linearGradient id="accent" x1="300" y1="160" x2="610" y2="540" gradientUnits="userSpaceOnUse"><stop stop-color="#0EA5E9"/><stop offset=".6" stop-color="#6366F1"/><stop offset="1" stop-color="#10B981"/></linearGradient></defs>
+  <path d="M748 168C835 282 797 486 653 591C509 696 280 676 156 540C32 404 82 188 239 92C396 -4 661 54 748 168Z" fill="url(#bg)" fill-opacity=".86"/>
+  <circle class="ping" cx="450" cy="324" r="205" fill="#0EA5E9" fill-opacity=".18"/>
+  <rect x="260" y="142" width="380" height="420" rx="56" fill="white" fill-opacity=".92"/>
+  <g class="bell"><path d="M331 415H569C543 386 532 349 532 289C532 246 497 211 454 211H446C403 211 368 246 368 289C368 349 357 386 331 415Z" fill="url(#accent)"/><path d="M417 448C426 469 438 480 450 480C462 480 474 469 483 448H417Z" fill="#0F172A" fill-opacity=".22"/><circle cx="555" cy="222" r="34" fill="#10B981"/><path d="M541 222H569M555 208V236" stroke="white" stroke-width="9" stroke-linecap="round"/></g>
+</svg>

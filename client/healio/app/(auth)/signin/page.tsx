@@ -1,13 +1,27 @@
 "use client";
-import React from "react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import Button from "@/components/common/Button";
+
 import Link from "next/link";
-import { FaGoogle, FaFacebookF, FaApple } from "react-icons/fa";
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
+import {
+  CalendarCheck,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+  Video,
+} from "lucide-react";
+import { motion } from "framer-motion";
+
+import {
+  AuthInput,
+  AuthShell,
+  AuthSubmitButton,
+  SecurityNote,
+  authFadeUp,
+  authStagger,
+} from "@/components/auth/PremiumAuth";
 import { loginUser } from "@/service/userApi";
-import { useAuthStore } from "@/store/authStore"
+import { useAuthStore } from "@/store/authStore";
 
 interface FormData {
   username: string;
@@ -15,162 +29,145 @@ interface FormData {
 }
 
 const Page = () => {
-
   const login = useAuthStore((s) => s.login);
-
+  const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
     username: "",
     password: "",
   });
-  const router = useRouter();
   const [message, setMessage] = useState<string>("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-      try {
-          const result = await loginUser(formData);
+    try {
+      const result = await loginUser(formData);
 
-          if (result?.success && result.data) {
-              const { token, ...userData } = result.data;
-              login(token, userData);
-              router.push("/");
-          } else {
-              setMessage("Invalid email or password.");
-              console.log(message);
-          }
-      } catch (err) {
-          setMessage("Something went wrong.");
-          console.error(err);
+      if (result?.success && result.data) {
+        const { token, ...userData } = result.data;
+        login(token, userData);
+        router.push("/");
+      } else {
+        setMessage("Invalid email or password.");
       }
-  }
-
-
+    } catch (err) {
+      setMessage("Something went wrong.");
+      console.error(err);
+    }
+  };
 
   return (
-    <div className="flex justify-center bg-emerald-950 min-h-screen py-12 px-4">
-      {/* Main Container */}
-      <div className="flex flex-col lg:flex-row items-center justify-center w-full max-w-6xl bg-gradient-to-br from-green-100 to-orange-100 rounded-3xl shadow-2xl overflow-hidden animate-fade-in">
-        
-        {/* Left Section */}
-        <div className="flex flex-col items-center lg:items-start p-6 lg:p-10 w-full lg:w-1/2">
-          <h1 className="text-2xl lg:text-3xl font-bold mb-4 text-emerald-950 text-center lg:text-left">
-            Welcome Back!
-          </h1>
-          <p className="text-sm lg:text-lg font-normal mb-6 text-gray-500 text-center lg:text-left">
-            Access your{" "}
-            <span className="text-lime-600 font-semibold">BreathSafe</span> dashboard to monitor air quality and ensure a healthier environment.
-          </p>
+    <AuthShell
+      badge="Secure care access"
+      title="Welcome Back"
+      subtitle="Sign in to manage appointments, records, and telemedicine sessions."
+      illustration={{
+        src: "/illustrations/auth-login-telemedicine.svg",
+        alt: "Animated transparent illustration of a doctor supporting telemedicine access",
+        title: "Connected clinical workspace",
+        subtitle: "Everything your care team needs, ready after sign in.",
+        cards: [
+          {
+            icon: ShieldCheck,
+            label: "Secure Access",
+            detail: "Protected health records",
+            className: "left-0 top-28",
+          },
+          {
+            icon: Video,
+            label: "Telemedicine Ready",
+            detail: "Join visits instantly",
+            className: "right-0 top-56",
+          },
+          {
+            icon: CalendarCheck,
+            label: "Fast Booking",
+            detail: "Live appointment slots",
+            className: "bottom-24 left-10",
+          },
+        ],
+      }}
+    >
+      <motion.form
+        variants={authStagger}
+        initial="hidden"
+        animate="show"
+        className="grid gap-3.5"
+        onSubmit={handleSubmit}
+      >
+        <AuthInput
+          id="username"
+          name="username"
+          label="Email or username"
+          icon={Mail}
+          type="text"
+          value={formData.username}
+          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+          placeholder="name@healio.health"
+          autoComplete="username"
+          required
+        />
 
-          {/* Image only on desktop */}
-          <div className="hidden lg:block mt-4 lg:mt-0">
-            <Image
-              src="/login-image.png"
-              width={400}
-              height={400}
-              alt="Login Image"
-              className="transform transition duration-500 hover:scale-105 animate-fade-in-up"
+        <AuthInput
+          id="password"
+          name="password"
+          label="Password"
+          icon={LockKeyhole}
+          type="password"
+          value={formData.password}
+          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+          placeholder="Enter your password"
+          autoComplete="current-password"
+          required
+        />
+
+        <motion.div
+          variants={authFadeUp}
+          className="flex flex-col gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <label className="inline-flex items-center gap-3">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300 text-sky-500 focus:ring-sky-400"
             />
-          </div>
+            Remember me
+          </label>
+          <Link
+            href="#"
+            className="text-sky-600 transition hover:text-emerald-500 dark:text-sky-300"
+          >
+            Forgot password?
+          </Link>
+        </motion.div>
 
-          {/* Right reserved text only on desktop */}
-          <p className="text-xs lg:text-md opacity-70 text-gray-500 mt-6 hidden lg:block text-center lg:text-left">
-            &copy; 2025 BreathSafe. All rights reserved.
-          </p>
-        </div>
+        {message && (
+          <motion.p
+            variants={authFadeUp}
+            className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-2 text-xs font-semibold text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-200"
+          >
+            {message}
+          </motion.p>
+        )}
 
-        {/* Right Section */}
-        <div className="p-6 lg:p-8 mt-8 lg:mt-0 w-full lg:w-1/2">
-          <h1 className="text-2xl lg:text-4xl text-gray-900 font-semibold text-center lg:text-left">
-            Sign In
-          </h1>
-          <p className="text-sm lg:text-lg font-normal text-gray-500 mt-4 lg:mt-6 text-center lg:text-left">
-            Access your account to continue
-          </p>
+        <AuthSubmitButton>Login</AuthSubmitButton>
+        <SecurityNote />
+      </motion.form>
 
-          {/* Sign-in Form */}
-          <form action="post" className="animate-fade-in-up mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-            <div className="flex flex-col">
-              <label htmlFor="email" className="font-normal text-sm lg:text-lg mb-1">
-                Email
-              </label>
-              <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                className="border p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-600 focus:border-transparent transition duration-300"
-                placeholder="Enter your username"
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <label htmlFor="password" className="font-normal text-sm lg:text-lg mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="border p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-600 focus:border-transparent transition duration-300"
-                placeholder="Enter your password"
-              />
-            </div>
-
-            <div className="flex justify-between items-center">
-              <div className="flex items-center mb-2 sm:mb-0">
-                <input type="checkbox" id="rememberMe" />
-                <label htmlFor="rememberMe" className="text-sm text-gray-500 ml-2">
-                  Remember Me
-                </label>
-              </div>
-              <a
-                href="#"
-                className="text-sm text-gray-500 hover:text-emerald-950 transition-colors duration-200"
-              >
-                Forget Password?
-              </a>
-            </div>
-
-            <Button onClick={() => {}} name="Sign In" type="submit" />
-          </form>
-
-          {/* Divider */}
-          <div className="flex items-center my-4 animate-fade-in-up">
-            <hr className="flex-grow border-gray-500" />
-            <span className="mx-2 text-gray-500 text-sm">or continue with</span>
-            <hr className="flex-grow border-gray-500" />
-          </div>
-
-          {/* Social Buttons */}
-          <div className="flex justify-center gap-4 animate-fade-in-up">
-            <button className="border border-gray-300 rounded-md p-2 hover:bg-gray-100 transition">
-              <FaGoogle className="text-red-500 w-5 h-5" />
-            </button>
-            <button className="border border-gray-300 rounded-md p-2 hover:bg-gray-100 transition">
-              <FaFacebookF className="text-blue-500 w-5 h-5" />
-            </button>
-            <button className="border border-gray-300 rounded-md p-2 hover:bg-gray-100 transition">
-              <FaApple className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Sign up */}
-          <p className="mt-6 text-center text-sm text-gray-500">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/signup"
-              className="font-medium text-gray-500 hover:text-emerald-950 transition-colors duration-200"
-            >
-              Create an account
-            </Link>
-          </p>
-        </div>
+      <div className="mt-4 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+        <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+        <span>New to Healio?</span>
+        <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
       </div>
-    </div>
+      <p className="mt-3 text-center text-sm font-semibold text-slate-600 dark:text-slate-300">
+        Don&apos;t have an account?{" "}
+        <Link
+          href="/signup"
+          className="text-sky-600 transition hover:text-emerald-500 dark:text-sky-300"
+        >
+          Create an account
+        </Link>
+      </p>
+    </AuthShell>
   );
 };
 

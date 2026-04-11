@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { Github, Linkedin, Mail, Heart, ChevronRight } from "lucide-react";
+import { Mail, Heart, ChevronRight } from "lucide-react";
+import { FaGithub, FaLinkedin } from "react-icons/fa";
 
 type LinkItem = { label: string; href: string; external?: boolean };
 type LinkGroup = { heading: string; links: LinkItem[] };
@@ -42,7 +43,7 @@ const SOCIAL_LINKS: { label: string; href: string; icon: React.ReactNode; aria: 
     label: "GitHub",
     href: "https://github.com",
     aria: "GitHub",
-    icon: <Github className="h-5 w-5" />,
+    icon: <FaGithub className="h-5 w-5" />,
     external: true,
   },
   {
@@ -55,7 +56,7 @@ const SOCIAL_LINKS: { label: string; href: string; icon: React.ReactNode; aria: 
     label: "LinkedIn",
     href: "https://linkedin.com",
     aria: "LinkedIn",
-    icon: <Linkedin className="h-5 w-5" />,
+    icon: <FaLinkedin className="h-5 w-5" />,
     external: true,
   },
 ];
