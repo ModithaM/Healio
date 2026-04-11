@@ -12,3 +12,11 @@ spring:
       httpclient:
         connect-timeout: 60000
         response-timeout: 60s
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:3000,http://localhost:3001"
+            allowedMethods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
