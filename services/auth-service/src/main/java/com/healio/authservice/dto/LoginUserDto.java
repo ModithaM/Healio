@@ -5,10 +5,11 @@ import lombok.Data;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class UserDto {
+public class LoginUserDto {
     private String id;
     private String username;
     private String email;
-    private UserDetailsDto userDetails;
     private String role;
+    private String password;
+    private LoginUserDetailsDto userDetails;
 }

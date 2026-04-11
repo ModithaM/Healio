@@ -1,14 +1,16 @@
-package com.healio.authservice.dto;
+package com.healio.userservice.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.healio.userservice.model.UserDetails;
 import lombok.Data;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class UserDto {
+public class LoginUserDto {
     private String id;
     private String username;
     private String email;
-    private UserDetailsDto userDetails;
+    private String password;
     private String role;
+    private UserDetails userDetails;
 }
