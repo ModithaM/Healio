@@ -6,6 +6,9 @@ import {ToastContainer} from "react-toastify";
 export const metadata: Metadata = {
   title: "Healio | Smart Healthcare & Telemedicine Platform",
   description: "Book appointments, consult doctors online, and manage patient care seamlessly.",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
