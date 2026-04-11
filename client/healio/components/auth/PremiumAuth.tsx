@@ -132,7 +132,7 @@ export function AuthShell({
 
           <AuthIllustrationPanel
             illustration={illustration}
-            className={cn("order-1 lg:order-2", reverse && "lg:order-1", illustrationClassName)}
+            className={cn("order-1 hidden lg:order-2 lg:block", reverse && "lg:order-1", illustrationClassName)}
           />
         </section>
       </main>
