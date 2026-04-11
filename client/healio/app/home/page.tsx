@@ -72,10 +72,28 @@ const imageBank = {
   heroSecond: "/illustrations/hero-patient-dashboard.svg",
   about: "/illustrations/about-healthcare-platform.svg",
   aboutInset: "/illustrations/about-care-workflow.svg",
-  telemedicine:
-    "https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1400&q=86",
-  cta:
-    "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1600&q=86",
+  patientManagement: "/illustrations/homepage-patient-management.svg",
+  doctorManagement: "/illustrations/homepage-doctor-management.svg",
+  appointmentScheduling: "/illustrations/homepage-appointment-scheduling.svg",
+  telemedicineConsultation: "/illustrations/homepage-telemedicine-consultation.svg",
+  telemedicine: "/illustrations/homepage-telemedicine-suite.svg",
+  digitalPrescriptions: "/illustrations/homepage-digital-prescriptions.svg",
+  notifications: "/illustrations/homepage-notifications.svg",
+  reportUploads: "/illustrations/homepage-report-uploads.svg",
+  adminDashboard: "/illustrations/homepage-admin-dashboard.svg",
+  cardiology: "/illustrations/homepage-cardiology.svg",
+  neurology: "/illustrations/homepage-neurology.svg",
+  pediatrics: "/illustrations/homepage-pediatrics.svg",
+  orthopedics: "/illustrations/homepage-orthopedics.svg",
+  dermatology: "/illustrations/homepage-dermatology.svg",
+  generalMedicine: "/illustrations/homepage-general-medicine.svg",
+  telemedicineArticle: "/illustrations/homepage-article-telemedicine.svg",
+  prescriptionArticle: "/illustrations/homepage-article-prescriptions.svg",
+  appointmentArticle: "/illustrations/homepage-article-appointments.svg",
+  cta: "/illustrations/homepage-cta-care-team.svg",
+  patientAvatar: "/illustrations/testimonial-avatar-patient.svg",
+  doctorAvatar: "/illustrations/testimonial-avatar-doctor.svg",
+  careAvatar: "/illustrations/testimonial-avatar-care.svg",
 };
 
 const navItems = [
@@ -93,57 +111,49 @@ const services = [
     icon: UsersRound,
     title: "Patient Management",
     description: "Profiles, visit history, insurance notes, and care plans in one connected workspace.",
-    image:
-      "https://images.unsplash.com/photo-1530497610245-94d3c16cda28?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.patientManagement,
   },
   {
     icon: Stethoscope,
     title: "Doctor Management",
     description: "Manage departments, credentials, clinic schedules, and consultation workflows.",
-    image:
-      "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.doctorManagement,
   },
   {
     icon: CalendarCheck,
     title: "Appointment Scheduling",
     description: "Book, reschedule, remind, and track in-person or virtual care visits.",
-    image:
-      "https://images.unsplash.com/photo-1551601651-2a8555f1a136?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.appointmentScheduling,
   },
   {
     icon: Video,
     title: "Telemedicine Video Consultation",
     description: "Secure video rooms with patient context, notes, prescriptions, and follow-ups.",
-    image:
-      "https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.telemedicineConsultation,
   },
   {
     icon: Pill,
     title: "Digital Prescriptions",
     description: "Create prescriptions, share care instructions, and reduce manual handoffs.",
-    image:
-      "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.digitalPrescriptions,
   },
   {
     icon: Bell,
     title: "Notifications & Alerts",
     description: "Automated reminders for appointments, lab reports, payments, and follow-up care.",
-    image:
-      "https://images.unsplash.com/photo-1581093458791-9f3c3ae95d0f?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.notifications,
   },
   {
     icon: FileText,
     title: "Medical Report Uploads",
     description: "Upload reports, scans, and lab files into a secure patient timeline.",
-    image:
-      "https://images.unsplash.com/photo-1581595220892-b0739db3ba8c?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.reportUploads,
   },
   {
     icon: Laptop,
     title: "Admin Dashboard",
     description: "Track hospital operations, bookings, revenue signals, and care team performance.",
-    image:
-      "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.adminDashboard,
   },
 ];
 
@@ -166,43 +176,37 @@ const departments = [
   {
     title: "Cardiology",
     description: "Heart care, ECG reviews, cardiac follow-ups.",
-    image:
-      "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.cardiology,
     icon: HeartPulse,
   },
   {
     title: "Neurology",
     description: "Neurological assessments and specialist care.",
-    image:
-      "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.neurology,
     icon: Brain,
   },
   {
     title: "Pediatrics",
     description: "Child-friendly visits, vaccination reminders.",
-    image:
-      "https://images.unsplash.com/photo-1631217872822-7c26d0b6b9e7?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.pediatrics,
     icon: Syringe,
   },
   {
     title: "Orthopedics",
     description: "Joint care, injury visits, recovery planning.",
-    image:
-      "https://images.unsplash.com/photo-1571019613914-85f342c6a11e?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.orthopedics,
     icon: Activity,
   },
   {
     title: "Dermatology",
     description: "Skin care consults and treatment follow-ups.",
-    image:
-      "https://images.unsplash.com/photo-1612277795421-9bc7706a4a34?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.dermatology,
     icon: Sparkles,
   },
   {
     title: "General Medicine",
     description: "Everyday health visits and long-term care.",
-    image:
-      "https://images.unsplash.com/photo-1631815588090-d4bfec5b1ccb?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.generalMedicine,
     icon: BadgeCheck,
   },
 ];
@@ -222,24 +226,21 @@ const testimonials = [
       "The online consultation flow feels calm and professional. My doctor had my history ready before the call started.",
     name: "Nadia Perera",
     role: "Telemedicine patient",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=180&q=80",
+    avatar: imageBank.patientAvatar,
   },
   {
     quote:
       "Healio brought appointment booking, patient notes, and virtual visits into one clean workflow for our outpatient team.",
     name: "Dr. Aaron Silva",
     role: "Family physician",
-    avatar:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=180&q=80",
+    avatar: imageBank.doctorAvatar,
   },
   {
     quote:
       "Digital reminders and prescriptions made follow-up care easier. It finally feels like the hospital system respects my time.",
     name: "Maya Chen",
     role: "Patient",
-    avatar:
-      "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=180&q=80",
+    avatar: imageBank.careAvatar,
   },
 ];
 
@@ -249,24 +250,21 @@ const articles = [
     date: "Apr 08, 2026",
     title: "Preparing for a secure video consultation",
     description: "A simple checklist for sharing symptoms, reports, and follow-up questions before your online visit.",
-    image:
-      "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.telemedicineArticle,
   },
   {
     category: "Patient Care",
     date: "Apr 02, 2026",
     title: "How digital prescriptions improve continuity",
     description: "Why connected prescriptions, instructions, and reminders reduce missed steps after a consultation.",
-    image:
-      "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.prescriptionArticle,
   },
   {
     category: "Appointments",
     date: "Mar 28, 2026",
     title: "Benefits of online doctor appointments",
     description: "How live availability and automated reminders make care access faster for patients and clinics.",
-    image:
-      "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=900&q=84",
+    image: imageBank.appointmentArticle,
   },
 ];
 
@@ -640,7 +638,7 @@ function TelemedicineSection() {
           <div className="absolute inset-6 rounded-[40px] bg-gradient-to-br from-sky-400/25 via-indigo-400/20 to-emerald-400/25 blur-3xl" />
           <div className="absolute inset-x-0 top-4 overflow-hidden rounded-[38px] border border-white/15 bg-white/10 p-3 shadow-2xl backdrop-blur-md">
             <div className="relative aspect-[4/3] overflow-hidden rounded-[30px]">
-              <Image src={imageBank.telemedicine} alt="Doctor conducting a telemedicine video consultation" fill className="object-cover" sizes="(max-width: 768px) 90vw, 560px" />
+              <Image src={imageBank.telemedicine} alt="Animated illustration of a doctor conducting a telemedicine video consultation" fill className="object-contain bg-gradient-to-br from-sky-950/20 via-indigo-950/10 to-emerald-950/20 p-5" sizes="(max-width: 768px) 90vw, 560px" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-transparent" />
               <div className="absolute left-4 right-4 top-4 flex items-center justify-between rounded-lg border border-white/15 bg-slate-950/55 px-4 py-3 backdrop-blur-md">
                 <span className="flex items-center gap-2 text-sm font-bold">
@@ -795,7 +793,7 @@ function CtaSection() {
   return (
     <section className="px-4 py-16 sm:px-6 lg:px-8">
       <motion.div variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-100px" }} className="relative mx-auto max-w-7xl overflow-hidden rounded-[44px] bg-slate-950 p-8 text-white shadow-2xl shadow-sky-950/20 md:p-12">
-        <Image src={imageBank.cta} alt="Modern hospital care team" fill className="object-cover opacity-30" sizes="100vw" />
+        <Image src={imageBank.cta} alt="Animated illustration of a modern hospital care team" fill className="object-cover opacity-35" sizes="100vw" />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/88 to-sky-950/65" />
         <div className="relative grid items-center gap-8 md:grid-cols-[1fr_auto]">
           <div>
@@ -967,7 +965,7 @@ function ServiceCard({
 }) {
   return (
     <Card className={cn("group relative h-full overflow-hidden border-white/10 bg-white/[0.07] p-3 text-white transition duration-300 hover:-translate-y-1 hover:border-sky-300/50 hover:bg-white/[0.1]", wide ? "min-h-[380px]" : "min-h-[330px]")}>
-      <Image src={service.image} alt={service.title} fill className="object-cover opacity-28 transition duration-500 group-hover:scale-105 group-hover:opacity-[0.36]" sizes={wide ? "(max-width: 1280px) 90vw, 620px" : "(max-width: 1280px) 50vw, 300px"} />
+      <Image src={service.image} alt={`${service.title} illustration`} fill className="object-cover opacity-34 transition duration-500 group-hover:scale-105 group-hover:opacity-[0.46]" sizes={wide ? "(max-width: 1280px) 90vw, 620px" : "(max-width: 1280px) 50vw, 300px"} />
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/72 to-transparent" />
       <div className="relative flex h-full flex-col justify-end p-4">
         <div className="mb-5 grid h-12 w-12 place-items-center rounded-lg bg-white/15 text-sky-100 backdrop-blur-md">
@@ -988,7 +986,7 @@ function DepartmentCard({
   return (
     <Card className="group overflow-hidden p-3 transition hover:-translate-y-1 hover:border-sky-300/60 hover:shadow-2xl hover:shadow-sky-500/10">
       <div className="relative aspect-[5/4] overflow-hidden rounded-lg">
-        <Image src={department.image} alt={department.title} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="(max-width: 1280px) 90vw, 390px" />
+        <Image src={department.image} alt={`${department.title} illustration`} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="(max-width: 1280px) 90vw, 390px" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/76 via-slate-950/12 to-transparent" />
         <div className="absolute bottom-4 left-4 right-4 text-white">
           <div className="mb-3 grid h-12 w-12 place-items-center rounded-lg bg-white/18 backdrop-blur-md">

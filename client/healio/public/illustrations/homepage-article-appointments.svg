@@ -1,0 +1,9 @@
+<svg width="900" height="700" viewBox="0 0 900 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>@keyframes check{0%,100%{stroke-dashoffset:64}50%{stroke-dashoffset:0}}.check{stroke-dasharray:64;animation:check 3.4s ease-in-out infinite}</style>
+  <defs><linearGradient id="bg" x1="116" y1="86" x2="770" y2="614" gradientUnits="userSpaceOnUse"><stop stop-color="#E0F2FE"/><stop offset=".55" stop-color="#EEF2FF"/><stop offset="1" stop-color="#DCFCE7"/></linearGradient><linearGradient id="accent" x1="250" y1="160" x2="660" y2="530" gradientUnits="userSpaceOnUse"><stop stop-color="#0EA5E9"/><stop offset=".55" stop-color="#6366F1"/><stop offset="1" stop-color="#10B981"/></linearGradient></defs>
+  <path d="M748 166C833 280 797 486 652 591C507 696 279 674 156 540C33 406 82 188 240 92C398 -4 663 52 748 166Z" fill="url(#bg)" fill-opacity=".86"/>
+  <rect x="230" y="130" width="440" height="420" rx="54" fill="white" fill-opacity=".94"/>
+  <rect x="286" y="190" width="328" height="72" rx="26" fill="url(#accent)"/>
+  <rect x="304" y="316" width="92" height="72" rx="22" fill="#E0F2FE"/><rect x="454" y="316" width="92" height="72" rx="22" fill="#EEF2FF"/><rect x="304" y="428" width="92" height="72" rx="22" fill="#ECFDF5"/><rect x="454" y="428" width="92" height="72" rx="22" fill="#E0F2FE"/>
+  <path class="check" d="M326 464L350 488L392 438" stroke="#10B981" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
