@@ -41,7 +41,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <div className={cn(isDark && "dark")}>
-      <main className="min-h-screen overflow-hidden bg-[#f5f8fc] text-slate-950 transition-colors duration-500 dark:bg-[#020817] dark:text-white">
+      <main className="min-h-screen overflow-hidden bg-[#f5f8fc] text-slate-950 transition-colors duration-500 dark:bg-[#020817] dark:text-white [&_a]:cursor-pointer [&_button]:cursor-pointer">
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.16),transparent_28%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.12),transparent_30%),linear-gradient(135deg,rgba(248,252,255,0.98),rgba(241,245,249,0.72))] dark:bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.17),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.14),transparent_30%),linear-gradient(135deg,rgba(2,8,23,0.99),rgba(15,23,42,0.9))]" />
         <AdminSidebar />
         <div className="relative min-w-0 space-y-6 px-4 py-4 sm:px-6 lg:ml-[280px] lg:px-8">

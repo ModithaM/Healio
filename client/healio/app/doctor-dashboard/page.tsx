@@ -156,7 +156,7 @@ export default function DoctorDashboardPage() {
 
   return (
     <div className={cn(isDark && "dark")}>
-      <main className="min-h-screen overflow-hidden bg-[#f4f9fc] text-slate-950 transition-colors duration-500 dark:bg-[#020817] dark:text-white">
+      <main className="min-h-screen overflow-hidden bg-[#f4f9fc] text-slate-950 transition-colors duration-500 dark:bg-[#020817] dark:text-white [&_a]:cursor-pointer [&_button]:cursor-pointer">
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.18),transparent_28%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.14),transparent_28%),linear-gradient(135deg,rgba(248,252,255,0.96),rgba(236,253,245,0.44))] dark:bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.18),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(20,184,166,0.15),transparent_30%),linear-gradient(135deg,rgba(2,8,23,0.98),rgba(8,13,31,0.9))]" />
         <div className="pointer-events-none fixed left-8 top-8 h-64 w-[52rem] rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
         <div className="pointer-events-none fixed bottom-8 right-8 h-72 w-[42rem] rounded-full bg-emerald-200/30 blur-3xl dark:bg-emerald-500/10" />
