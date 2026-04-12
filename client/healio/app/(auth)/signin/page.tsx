@@ -71,19 +71,19 @@ const Page = () => {
             icon: ShieldCheck,
             label: "Secure Access",
             detail: "Protected health records",
-            className: "left-0 top-28",
+            className: "left-4 top-20",
           },
           {
             icon: Video,
             label: "Telemedicine Ready",
             detail: "Join visits instantly",
-            className: "right-0 top-56",
+            className: "right-4 top-52",
           },
           {
             icon: CalendarCheck,
             label: "Fast Booking",
             detail: "Live appointment slots",
-            className: "bottom-24 left-10",
+            className: "bottom-20 left-10",
           },
         ],
       }}

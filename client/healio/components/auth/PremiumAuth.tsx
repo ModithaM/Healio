@@ -99,7 +99,7 @@ export function AuthShell({
 
         <section
           className={cn(
-            "relative z-10 mx-auto grid max-w-7xl items-center gap-6 pb-4 pt-6 lg:min-h-[calc(100vh-64px)] lg:grid-cols-2 lg:pt-2",
+            "relative z-10 mx-auto grid max-w-7xl items-center gap-6 pb-6 pt-6 lg:min-h-[calc(100vh-72px)] lg:grid-cols-2 lg:pt-4",
             reverse && "lg:grid-cols-2"
           )}
         >
@@ -152,16 +152,16 @@ function AuthIllustrationPanel({
       initial={{ opacity: 0, x: 42, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       transition={{ duration: 0.85, ease }}
-      className={cn("relative min-h-[390px] px-3 sm:px-5 lg:min-h-[620px] lg:px-6", className)}
+      className={cn("relative min-h-[390px] px-3 sm:px-5 lg:min-h-[540px] lg:px-4", className)}
     >
       <div className="absolute inset-x-8 inset-y-6 rounded-[42px] bg-gradient-to-br from-sky-300/35 via-indigo-300/20 to-emerald-300/35 blur-3xl dark:from-sky-500/20 dark:via-indigo-500/15 dark:to-emerald-500/20" />
-      <div className="absolute inset-x-3 top-2 overflow-hidden rounded-[34px] border border-white/70 bg-white/42 p-6 shadow-2xl shadow-sky-950/15 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.07] sm:inset-x-5 lg:inset-x-6 lg:inset-y-6 lg:p-8">
+      <div className="relative mx-auto min-h-[520px] overflow-hidden rounded-[34px] border border-white/70 bg-white/42 p-6 shadow-2xl shadow-sky-950/15 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.07] lg:min-h-[520px] lg:p-7">
         <div className="absolute right-10 top-10 h-28 w-28 rounded-full bg-sky-300/25 blur-2xl" />
         <div className="absolute bottom-20 left-8 h-36 w-36 rounded-full bg-emerald-300/20 blur-2xl" />
         <motion.div
           animate={{ y: [0, -18, 0] }}
           transition={{ duration: 6.2, repeat: Infinity, ease: "easeInOut" }}
-          className="relative mx-auto aspect-square max-w-[340px] lg:max-w-[450px]"
+          className="relative mx-auto aspect-square max-w-[300px] lg:max-w-[360px]"
         >
           <Image
             src={illustration.src}
@@ -173,19 +173,18 @@ function AuthIllustrationPanel({
           />
         </motion.div>
 
-        <div className="relative mx-auto mt-1 max-w-xl text-center">
+        <div className="relative mx-auto mt-2 max-w-xl text-center">
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">
             {illustration.title}
           </p>
-          <h2 className="mt-3 text-2xl font-bold leading-tight text-slate-950 dark:text-white lg:text-3xl">
+          <h2 className="mt-3 text-2xl font-bold leading-tight text-slate-950 dark:text-white lg:text-[1.7rem]">
             {illustration.subtitle}
           </h2>
         </div>
+        {illustration.cards.map((card, index) => (
+          <FloatingAuthCard key={card.label} {...card} delay={index * 0.2} />
+        ))}
       </div>
-
-      {illustration.cards.map((card, index) => (
-        <FloatingAuthCard key={card.label} {...card} delay={index * 0.2} />
-      ))}
     </motion.div>
   );
 }
