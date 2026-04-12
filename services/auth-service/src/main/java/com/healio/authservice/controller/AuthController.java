@@ -1,7 +1,7 @@
 package com.healio.authservice.controller;
 
+import com.healio.authservice.dto.LoginResponseDto;
 import com.healio.authservice.dto.RegisterDto;
-import com.healio.authservice.dto.TokenDto;
 import com.healio.authservice.request.LoginRequest;
 import com.healio.authservice.request.RegisterRequest;
 import com.healio.authservice.service.AuthService;
@@ -19,7 +19,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<TokenDto> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
@@ -28,3 +28,4 @@ public class AuthController {
         return ResponseEntity.ok(authService.register(request));
     }
 }
+

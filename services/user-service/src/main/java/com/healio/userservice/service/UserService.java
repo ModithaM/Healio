@@ -26,11 +26,26 @@ public class UserService {
     private final ModelMapper modelMapper;
 
     public User saveUser(RegisterRequest request) {
+        Role userRole = Role.USER;
+        if (request.getRole() != null && !request.getRole().isEmpty()) {
+            try {
+                userRole = Role.valueOf(request.getRole().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                userRole = Role.USER;
+            }
+        }
+
+        UserDetails userDetails = UserDetails.builder()
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .build();
+
         User toSave = User.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .email(request.getEmail())
-                .role(Role.USER)
+                .role(userRole)
+                .userDetails(userDetails)
                 .active(Active.ACTIVE).build();
         return userRepository.save(toSave);
     }

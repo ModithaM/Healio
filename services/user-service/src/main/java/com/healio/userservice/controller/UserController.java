@@ -1,7 +1,9 @@
 package com.healio.userservice.controller;
 
 import com.healio.userservice.dto.AuthUserDto;
+import com.healio.userservice.dto.LoginUserDto;
 import com.healio.userservice.dto.UserDto;
+import com.healio.userservice.model.User;
 import com.healio.userservice.request.RegisterRequest;
 import com.healio.userservice.request.UserUpdateRequest;
 import com.healio.userservice.service.UserService;
@@ -47,6 +49,19 @@ public class UserController {
     @GetMapping("/getUserByUsername/{username}")
     public ResponseEntity<AuthUserDto> getUserByUsername(@PathVariable String username) {
         return ResponseEntity.ok(modelMapper.map(userService.getUserByUsername(username), AuthUserDto.class));
+    }
+
+    @GetMapping("/getLoginUser/{username}")
+    public ResponseEntity<LoginUserDto> getLoginUser(@PathVariable String username) {
+        User user = userService.getUserByUsername(username);
+        LoginUserDto loginUserDto = new LoginUserDto();
+        loginUserDto.setId(user.getId());
+        loginUserDto.setUsername(user.getUsername());
+        loginUserDto.setEmail(user.getEmail());
+        loginUserDto.setRole(user.getRole().name());
+        loginUserDto.setPassword(user.getPassword());
+        loginUserDto.setUserDetails(user.getUserDetails());
+        return ResponseEntity.ok(loginUserDto);
     }
 
     @PutMapping("/update")

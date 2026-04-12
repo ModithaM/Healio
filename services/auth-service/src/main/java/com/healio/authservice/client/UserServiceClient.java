@@ -1,5 +1,6 @@
 package com.healio.authservice.client;
 
+import com.healio.authservice.dto.LoginUserDto;
 import com.healio.authservice.dto.RegisterDto;
 import com.healio.authservice.dto.UserDto;
 import com.healio.authservice.request.RegisterRequest;
@@ -17,4 +18,7 @@ public interface UserServiceClient {
 
     @GetMapping("/getUserByUsername/{username}")
     ResponseEntity<UserDto> getUserByUsername(@PathVariable String username);
+
+    @GetMapping("/getLoginUser/{username}")
+    ResponseEntity<LoginUserDto> getLoginUser(@PathVariable String username);
 }
