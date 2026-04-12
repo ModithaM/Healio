@@ -152,6 +152,7 @@ const activities = [
 
 export default function DoctorDashboardPage() {
   const [isDark, setIsDark] = useState(false);
+  const [sessionModalOpen, setSessionModalOpen] = useState(false);
 
   return (
     <div className={cn(isDark && "dark")}>
@@ -166,7 +167,11 @@ export default function DoctorDashboardPage() {
           animate="show"
           className="relative mx-auto flex w-full max-w-[1540px] flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8"
         >
-          <DashboardHeader isDark={isDark} onToggleDark={() => setIsDark((value) => !value)} />
+          <DashboardHeader
+            isDark={isDark}
+            onCreateSession={() => setSessionModalOpen(true)}
+            onToggleDark={() => setIsDark((value) => !value)}
+          />
 
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12 [grid-auto-flow:dense]">
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-3 xl:row-span-2">
@@ -207,12 +212,23 @@ export default function DoctorDashboardPage() {
             </motion.div>
           </section>
         </motion.div>
+        <AnimatePresence>
+          {sessionModalOpen && <CreateSessionModal onClose={() => setSessionModalOpen(false)} />}
+        </AnimatePresence>
       </main>
     </div>
   );
 }
 
-function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: () => void }) {
+function DashboardHeader({
+  isDark,
+  onCreateSession,
+  onToggleDark,
+}: {
+  isDark: boolean;
+  onCreateSession: () => void;
+  onToggleDark: () => void;
+}) {
   const [profileOpen, setProfileOpen] = useState(false);
 
   return (
@@ -240,6 +256,10 @@ function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDa
             </label>
 
             <div className="flex items-center gap-2">
+              <Button className="hidden h-12 rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500 px-4 shadow-lg shadow-sky-500/20 hover:from-sky-500 hover:to-emerald-400 sm:inline-flex" onClick={onCreateSession}>
+                <Video className="h-4 w-4" />
+                Create Session
+              </Button>
               <HeaderIconButton ariaLabel="Notifications">
                 <Bell className="h-5 w-5" />
                 <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-950" />
@@ -262,6 +282,10 @@ function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDa
                 <AnimatePresence>{profileOpen && <ProfileMenu />}</AnimatePresence>
               </div>
             </div>
+            <Button className="h-12 w-full rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500 shadow-lg shadow-sky-500/20 hover:from-sky-500 hover:to-emerald-400 sm:hidden" onClick={onCreateSession}>
+              <Video className="h-4 w-4" />
+              Create Session
+            </Button>
           </div>
         </div>
       </div>
@@ -286,6 +310,30 @@ function ProfileMenu() {
         <LogOut className="h-4 w-4" />
         Logout
       </Link>
+    </motion.div>
+  );
+}
+
+function CreateSessionModal({ onClose }: { onClose: () => void }) {
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 px-4 py-6 backdrop-blur-md"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2, ease }}
+      onMouseDown={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 24, scale: 0.96 }}
+        transition={{ duration: 0.24, ease }}
+        className="w-full max-w-5xl"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <SessionGenerationForm onCancel={onClose} />
+      </motion.div>
     </motion.div>
   );
 }
@@ -572,7 +620,7 @@ function TelemedicineSessions() {
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="mt-5 grid gap-4 xl:grid-cols-[1.35fr_1fr]">
         <AnimatePresence mode="wait">
           {showSessionForm ? (
             <SessionGenerationForm key="session-form" onCancel={() => setShowSessionForm(false)} />
@@ -649,6 +697,10 @@ function TelemedicineSessions() {
 }
 
 function SessionGenerationForm({ onCancel }: { onCancel: () => void }) {
+  const labelClass = "grid min-w-0 gap-1.5";
+  const fieldClass = "h-11 w-full min-w-0 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]";
+  const textareaClass = "min-h-24 w-full min-w-0 rounded-2xl border border-white/70 bg-white/80 px-3 py-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]";
+
   return (
     <motion.form
       initial={{ opacity: 0, y: 10 }}
@@ -659,7 +711,7 @@ function SessionGenerationForm({ onCancel }: { onCancel: () => void }) {
         event.preventDefault();
         onCancel();
       }}
-      className="rounded-[24px] border border-sky-200/80 bg-sky-50/75 p-4 shadow-sm dark:border-sky-300/20 dark:bg-sky-400/10"
+      className="max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-[24px] border border-sky-200/80 bg-sky-50/75 p-4 shadow-sm dark:border-sky-300/20 dark:bg-sky-400/10 sm:p-5 xl:p-6"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -679,39 +731,39 @@ function SessionGenerationForm({ onCancel }: { onCancel: () => void }) {
         </button>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="grid gap-1.5">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <label className={labelClass}>
           <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Patient</span>
-          <select className="h-11 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]">
+          <select className={fieldClass}>
             {patients.map((patient) => (
               <option key={patient.name}>{patient.name}</option>
             ))}
           </select>
         </label>
-        <label className="grid gap-1.5">
+        <label className={labelClass}>
           <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Session title</span>
-          <input className="h-11 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]" defaultValue="Cardiology video review" />
+          <input className={fieldClass} defaultValue="Cardiology video review" />
         </label>
-        <label className="grid gap-1.5">
+        <label className={labelClass}>
           <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Date</span>
-          <input type="date" className="h-11 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]" defaultValue="2026-04-12" />
+          <input type="date" className={fieldClass} defaultValue="2026-04-12" />
         </label>
-        <label className="grid gap-1.5">
+        <label className={labelClass}>
           <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Start time</span>
-          <input type="time" className="h-11 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]" defaultValue="16:30" />
+          <input type="time" className={fieldClass} defaultValue="16:30" />
         </label>
-        <label className="grid gap-1.5 sm:col-span-2">
+        <label className={cn(labelClass, "sm:col-span-2")}>
           <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Duration</span>
-          <select className="h-11 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]">
+          <select className={fieldClass}>
             <option>15 minutes</option>
             <option>30 minutes</option>
             <option>45 minutes</option>
             <option>60 minutes</option>
           </select>
         </label>
-        <label className="grid gap-1.5 sm:col-span-2">
+        <label className={cn(labelClass, "sm:col-span-2")}>
           <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Preparation note</span>
-          <textarea className="min-h-24 rounded-2xl border border-white/70 bg-white/80 px-3 py-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]" defaultValue="Please keep your FBC report and latest blood pressure readings ready before joining." />
+          <textarea className={textareaClass} defaultValue="Please keep your FBC report and latest blood pressure readings ready before joining." />
         </label>
       </div>
 
