@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   Activity,
   Bell,
@@ -13,6 +14,8 @@ import {
   FilePlus2,
   FileText,
   HeartPulse,
+  Home,
+  LogOut,
   Mail,
   Moon,
   MoreHorizontal,
@@ -189,6 +192,8 @@ export default function PatientDashboardPage() {
 }
 
 function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: () => void }) {
+  const [profileOpen, setProfileOpen] = useState(false);
+
   return (
     <motion.header variants={fadeUp} className="sticky top-3 z-30">
       <div className="rounded-[26px] border border-white/70 bg-white/72 px-4 py-3.5 shadow-2xl shadow-sky-950/8 backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/72 dark:shadow-black/30">
@@ -224,14 +229,20 @@ function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDa
               <HeaderIconButton ariaLabel="Toggle theme" onClick={onToggleDark}>
                 {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </HeaderIconButton>
-              <button className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/80 px-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-lg dark:border-white/10 dark:bg-white/8">
-                <Image src={patient.avatar} alt={`${patient.name} avatar`} width={34} height={34} className="rounded-xl" />
-                <span className="hidden sm:block">
-                  <span className="block text-sm font-bold">{patient.name.split(" ")[0]}</span>
-                  <span className="block text-xs text-slate-500 dark:text-slate-400">Patient</span>
-                </span>
-                <ChevronDown className="h-4 w-4 text-slate-400" />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setProfileOpen((value) => !value)}
+                  className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/80 px-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-lg dark:border-white/10 dark:bg-white/8"
+                >
+                  <Image src={patient.avatar} alt={`${patient.name} avatar`} width={34} height={34} className="rounded-xl" />
+                  <span className="hidden sm:block">
+                    <span className="block text-sm font-bold">{patient.name.split(" ")[0]}</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">Patient</span>
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 text-slate-400 transition", profileOpen && "rotate-180 text-sky-500")} />
+                </button>
+                {profileOpen && <ProfileMenu />}
+              </div>
             </div>
             <Button className="h-12 w-full rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500 shadow-lg shadow-sky-500/20 hover:from-sky-400 hover:to-emerald-400 sm:hidden">
               <CalendarClock className="h-4 w-4" />
@@ -241,6 +252,21 @@ function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDa
         </div>
       </div>
     </motion.header>
+  );
+}
+
+function ProfileMenu() {
+  return (
+    <div className="absolute right-0 top-14 z-50 w-52 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-2xl shadow-sky-950/12 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95">
+      <Link href="/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-200 dark:hover:bg-sky-400/10 dark:hover:text-sky-200">
+        <Home className="h-4 w-4" />
+        Home
+      </Link>
+      <Link href="/signin" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10">
+        <LogOut className="h-4 w-4" />
+        Logout
+      </Link>
+    </div>
   );
 }
 
