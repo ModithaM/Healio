@@ -31,7 +31,7 @@ import {
   Video,
   XCircle,
 } from "lucide-react";
-import { motion, type Variants } from "framer-motion";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
 import { useState } from "react";
 
@@ -241,7 +241,7 @@ function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDa
                   </span>
                   <ChevronDown className={cn("h-4 w-4 text-slate-400 transition", profileOpen && "rotate-180 text-sky-500")} />
                 </button>
-                {profileOpen && <ProfileMenu />}
+                <AnimatePresence>{profileOpen && <ProfileMenu />}</AnimatePresence>
               </div>
             </div>
             <Button className="h-12 w-full rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500 shadow-lg shadow-sky-500/20 hover:from-sky-400 hover:to-emerald-400 sm:hidden">
@@ -257,7 +257,13 @@ function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDa
 
 function ProfileMenu() {
   return (
-    <div className="absolute right-0 top-14 z-50 w-52 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-2xl shadow-sky-950/12 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95">
+    <motion.div
+      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+      transition={{ duration: 0.18, ease }}
+      className="absolute right-0 top-14 z-50 w-52 origin-top-right overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-2xl shadow-sky-950/12 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95"
+    >
       <Link href="/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-200 dark:hover:bg-sky-400/10 dark:hover:text-sky-200">
         <Home className="h-4 w-4" />
         Home
@@ -266,7 +272,7 @@ function ProfileMenu() {
         <LogOut className="h-4 w-4" />
         Logout
       </Link>
-    </div>
+    </motion.div>
   );
 }
 

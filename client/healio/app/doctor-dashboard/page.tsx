@@ -35,7 +35,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { motion, type Variants } from "framer-motion";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
 import { useState } from "react";
 
@@ -259,7 +259,7 @@ function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDa
                   </span>
                   <ChevronDown className={cn("h-4 w-4 text-slate-400 transition", profileOpen && "rotate-180 text-sky-500")} />
                 </button>
-                {profileOpen && <ProfileMenu />}
+                <AnimatePresence>{profileOpen && <ProfileMenu />}</AnimatePresence>
               </div>
             </div>
           </div>
@@ -271,7 +271,13 @@ function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDa
 
 function ProfileMenu() {
   return (
-    <div className="absolute right-0 top-14 z-50 w-52 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-2xl shadow-sky-950/12 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95">
+    <motion.div
+      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+      transition={{ duration: 0.18, ease }}
+      className="absolute right-0 top-14 z-50 w-52 origin-top-right overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-2xl shadow-sky-950/12 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95"
+    >
       <Link href="/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-200 dark:hover:bg-sky-400/10 dark:hover:text-sky-200">
         <Home className="h-4 w-4" />
         Home
@@ -280,7 +286,7 @@ function ProfileMenu() {
         <LogOut className="h-4 w-4" />
         Logout
       </Link>
-    </div>
+    </motion.div>
   );
 }
 
@@ -548,14 +554,16 @@ function PatientRecordsPreview() {
 }
 
 function TelemedicineSessions() {
+  const [showSessionForm, setShowSessionForm] = useState(false);
+
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <SectionTitle eyebrow="Telemedicine" title="Online consultation sessions" />
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="rounded-2xl">
+          <Button variant="outline" className="rounded-2xl" onClick={() => setShowSessionForm((value) => !value)}>
             <CalendarClock className="h-4 w-4" />
-            Schedule Session
+            {showSessionForm ? "Hide Form" : "Create Session"}
           </Button>
           <Button className="rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500">
             <Video className="h-4 w-4" />
@@ -565,44 +573,57 @@ function TelemedicineSessions() {
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <div className="rounded-[24px] border border-sky-200/80 bg-sky-50/75 p-4 shadow-sm dark:border-sky-300/20 dark:bg-sky-400/10">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">Schedule video consultation</p>
-              <h3 className="mt-2 text-xl font-bold">Create a secure patient session</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                Assign a patient, reserve a virtual slot, and send the meeting link with preparation notes.
-              </p>
-            </div>
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25">
-              <CalendarClock className="h-6 w-6" />
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {[
-              { label: "Patient", value: "Hasindu Chanuka" },
-              { label: "Date", value: "Apr 12, 2026" },
-              { label: "Time slot", value: "04:30 PM" },
-              { label: "Duration", value: "30 minutes" },
-            ].map((field) => (
-              <div key={field.label} className="rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.06]">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{field.label}</p>
-                <p className="mt-1 text-sm font-bold text-slate-700 dark:text-slate-100">{field.value}</p>
+        <AnimatePresence mode="wait">
+          {showSessionForm ? (
+            <SessionGenerationForm key="session-form" onCancel={() => setShowSessionForm(false)} />
+          ) : (
+            <motion.div
+              key="session-summary"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.22, ease }}
+              className="rounded-[24px] border border-sky-200/80 bg-sky-50/75 p-4 shadow-sm dark:border-sky-300/20 dark:bg-sky-400/10"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">Create video consultation</p>
+                  <h3 className="mt-2 text-xl font-bold">Generate a secure patient session</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    Select a patient, reserve a virtual slot, and generate a meeting link with preparation notes.
+                  </p>
+                </div>
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25">
+                  <CalendarClock className="h-6 w-6" />
+                </div>
               </div>
-            ))}
-          </div>
 
-          <div className="mt-3 rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.06]">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Preparation note</p>
-            <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Ask patient to keep FBC report and latest blood pressure readings ready.</p>
-          </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {[
+                  { label: "Patient", value: "Hasindu Chanuka" },
+                  { label: "Date", value: "Apr 12, 2026" },
+                  { label: "Time slot", value: "04:30 PM" },
+                  { label: "Duration", value: "30 minutes" },
+                ].map((field) => (
+                  <div key={field.label} className="rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.06]">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{field.label}</p>
+                    <p className="mt-1 text-sm font-bold text-slate-700 dark:text-slate-100">{field.value}</p>
+                  </div>
+                ))}
+              </div>
 
-          <Button className="mt-4 w-full rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500">
-            <Video className="h-4 w-4" />
-            Schedule Video Consultation
-          </Button>
-        </div>
+              <div className="mt-3 rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.06]">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Preparation note</p>
+                <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Ask patient to keep FBC report and latest blood pressure readings ready.</p>
+              </div>
+
+              <Button className="mt-4 w-full rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500" onClick={() => setShowSessionForm(true)}>
+                <Video className="h-4 w-4" />
+                Create Session With Patient
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="grid gap-3.5 lg:grid-cols-3 xl:grid-cols-1">
           {sessions.map((session) => (
@@ -624,6 +645,86 @@ function TelemedicineSessions() {
         </div>
       </div>
     </Card>
+  );
+}
+
+function SessionGenerationForm({ onCancel }: { onCancel: () => void }) {
+  return (
+    <motion.form
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.22, ease }}
+      onSubmit={(event) => {
+        event.preventDefault();
+        onCancel();
+      }}
+      className="rounded-[24px] border border-sky-200/80 bg-sky-50/75 p-4 shadow-sm dark:border-sky-300/20 dark:bg-sky-400/10"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">Generate session</p>
+          <h3 className="mt-2 text-xl font-bold">Create video consultation</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Generate a secure telemedicine session and notify the selected patient.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-slate-200 bg-white/70 text-slate-500 transition hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:bg-white/[0.06]"
+          aria-label="Close session form"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <label className="grid gap-1.5">
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Patient</span>
+          <select className="h-11 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]">
+            {patients.map((patient) => (
+              <option key={patient.name}>{patient.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1.5">
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Session title</span>
+          <input className="h-11 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]" defaultValue="Cardiology video review" />
+        </label>
+        <label className="grid gap-1.5">
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Date</span>
+          <input type="date" className="h-11 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]" defaultValue="2026-04-12" />
+        </label>
+        <label className="grid gap-1.5">
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Start time</span>
+          <input type="time" className="h-11 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]" defaultValue="16:30" />
+        </label>
+        <label className="grid gap-1.5 sm:col-span-2">
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Duration</span>
+          <select className="h-11 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]">
+            <option>15 minutes</option>
+            <option>30 minutes</option>
+            <option>45 minutes</option>
+            <option>60 minutes</option>
+          </select>
+        </label>
+        <label className="grid gap-1.5 sm:col-span-2">
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Preparation note</span>
+          <textarea className="min-h-24 rounded-2xl border border-white/70 bg-white/80 px-3 py-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]" defaultValue="Please keep your FBC report and latest blood pressure readings ready before joining." />
+        </label>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <Button type="submit" className="flex-1 rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500">
+          <Video className="h-4 w-4" />
+          Generate Session
+        </Button>
+        <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </motion.form>
   );
 }
 
