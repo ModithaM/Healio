@@ -2,6 +2,10 @@
 
 const { spawn } = require('child_process');
 const path = require('path');
+const dotenv = require('dotenv');
+
+// Load .env file before starting services
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Startup order optimized for low-end laptops
 // 1. Config server first (centralized configuration) - others depend on it
