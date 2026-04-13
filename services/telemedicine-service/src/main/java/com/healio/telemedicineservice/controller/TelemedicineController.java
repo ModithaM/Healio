@@ -1,58 +1,79 @@
 package com.healio.telemedicineservice.controller;
 
+import com.healio.telemedicineservice.dto.CreateTelemedicineSessionRequest;
+import com.healio.telemedicineservice.dto.JoinDetailsResponse;
+import com.healio.telemedicineservice.dto.StartSessionResponse;
+import com.healio.telemedicineservice.dto.TelemedicineSessionResponse;
+import com.healio.telemedicineservice.dto.UpdateNotesRequest;
+import com.healio.telemedicineservice.dto.UpdateTelemedicineSessionRequest;
+import com.healio.telemedicineservice.enums.SessionStatus;
+import com.healio.telemedicineservice.service.TelemedicineSessionService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v1/telemedicine-service/")
+@RequestMapping("/api/telemedicine/sessions")
 @RequiredArgsConstructor
 public class TelemedicineController {
-//    private final AdvertService advertService;
-//    private final ModelMapper modelMapper;
-//
-//    @PostMapping("/create")
-//    public ResponseEntity<AdvertDto> createAdvert(@Valid @RequestPart AdvertCreateRequest request,
-//                                                  @RequestPart(required = false) MultipartFile file) {
-//        return ResponseEntity.status(HttpStatus.CREATED)
-//                .body(modelMapper.map(advertService.createAdvert(request, file), AdvertDto.class));
-//    }
-//
-//    @GetMapping("/getAll")
-//    public ResponseEntity<List<AdvertDto>> getAll() {
-//        return ResponseEntity.ok(advertService.getAll().stream()
-//                .map(advert -> modelMapper.map(advert, AdvertDto.class)).toList());
-//    }
-//
-//    @GetMapping("/getAdvertById/{id}")
-//    public ResponseEntity<AdvertDto> getAdvertById(@PathVariable String id) {
-//        return ResponseEntity.ok(modelMapper.map(advertService.getAdvertById(id), AdvertDto.class));
-//    }
-//
-//    @GetMapping("/getAdvertsByUserId/{id}")
-//    public ResponseEntity<List<AdvertDto>> getAdvertsByUserId(@PathVariable String id,
-//                                                              @RequestParam Advertiser type) {
-//        return ResponseEntity.ok(advertService.getAdvertsByUserId(id, type).stream()
-//                .map(advert -> modelMapper.map(advert, AdvertDto.class)).toList());
-//    }
-//
-//    @PutMapping("/update")
-//    @PreAuthorize("hasRole('ADMIN') or @advertService.authorizeCheck(#request.id, principal)")
-//    public ResponseEntity<AdvertDto> updateAdvertById(@Valid @RequestPart AdvertUpdateRequest request,
-//                                                      @RequestPart(required = false) MultipartFile file) {
-//        return ResponseEntity.ok(modelMapper.map(advertService.updateAdvertById(request, file), AdvertDto.class));
-//    }
-//
-//    @DeleteMapping("/deleteAdvertById/{id}")
-//    @PreAuthorize("hasRole('ADMIN') or @advertService.authorizeCheck(#id, principal)")
-//    public ResponseEntity<Void> deleteAdvertById(@PathVariable String id) {
-//        advertService.deleteAdvertById(id);
-//        return ResponseEntity.ok().build();
-//    }
+
+    private final TelemedicineSessionService telemedicineSessionService;
+
+    @PostMapping
+    public ResponseEntity<TelemedicineSessionResponse> createSession(
+            @Valid @RequestBody CreateTelemedicineSessionRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(telemedicineSessionService.createSession(request));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<TelemedicineSessionResponse>> getSessions(
+            @RequestParam(required = false) String doctorId,
+            @RequestParam(required = false) String patientId,
+            @RequestParam(required = false) SessionStatus status) {
+        return ResponseEntity.ok(telemedicineSessionService.getSessions(doctorId, patientId, status));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<TelemedicineSessionResponse> getSessionById(@PathVariable String id) {
+        return ResponseEntity.ok(telemedicineSessionService.getSessionById(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<TelemedicineSessionResponse> updateSession(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateTelemedicineSessionRequest request) {
+        return ResponseEntity.ok(telemedicineSessionService.updateSession(id, request));
+    }
+
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<TelemedicineSessionResponse> cancelSession(@PathVariable String id) {
+        return ResponseEntity.ok(telemedicineSessionService.cancelSession(id));
+    }
+
+    @PatchMapping("/{id}/start")
+    public ResponseEntity<StartSessionResponse> startSession(@PathVariable String id) {
+        return ResponseEntity.ok(telemedicineSessionService.startSession(id));
+    }
+
+    @PatchMapping("/{id}/complete")
+    public ResponseEntity<TelemedicineSessionResponse> completeSession(@PathVariable String id) {
+        return ResponseEntity.ok(telemedicineSessionService.completeSession(id));
+    }
+
+    @PatchMapping("/{id}/notes")
+    public ResponseEntity<TelemedicineSessionResponse> updateNotes(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateNotesRequest request) {
+        return ResponseEntity.ok(telemedicineSessionService.updateNotes(id, request));
+    }
+
+    @GetMapping("/{id}/join-details")
+    public ResponseEntity<JoinDetailsResponse> getJoinDetails(@PathVariable String id) {
+        return ResponseEntity.ok(telemedicineSessionService.getJoinDetails(id));
+    }
 }

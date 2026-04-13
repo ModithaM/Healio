@@ -1,5 +1,7 @@
 package com.healio.telemedicineservice.exc;
 
+import com.healio.telemedicineservice.exception.TelemedicineBadRequestException;
+import com.healio.telemedicineservice.exception.TelemedicineNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
@@ -42,6 +44,20 @@ public class GeneralExceptionHandler {
         Map<String, String> errors = new HashMap<>();
         errors.put("error", exception.getMessage());
         return new ResponseEntity<>(errors, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(TelemedicineNotFoundException.class)
+    public ResponseEntity<?> telemedicineNotFoundException(TelemedicineNotFoundException exception) {
+        Map<String, String> errors = new HashMap<>();
+        errors.put("error", exception.getMessage());
+        return new ResponseEntity<>(errors, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(TelemedicineBadRequestException.class)
+    public ResponseEntity<?> telemedicineBadRequestException(TelemedicineBadRequestException exception) {
+        Map<String, String> errors = new HashMap<>();
+        errors.put("error", exception.getMessage());
+        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(UnauthorizedException.class)
