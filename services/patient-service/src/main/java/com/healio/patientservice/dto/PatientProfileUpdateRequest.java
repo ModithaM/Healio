@@ -1,13 +1,14 @@
 package com.healio.patientservice.dto;
 
 import com.healio.patientservice.enums.BloodGroup;
+import com.healio.patientservice.enums.Gender;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.PastOrPresent;
 
 import java.time.LocalDate;
 
@@ -19,6 +20,8 @@ import java.time.LocalDate;
 public class PatientProfileUpdateRequest {
 
     private BloodGroup bloodGroup;
+
+    private Gender gender;
 
     @PastOrPresent(message = "Date of birth must be in the past or present")
     private LocalDate dateOfBirth;

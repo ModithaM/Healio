@@ -1,6 +1,7 @@
 package com.healio.patientservice.model;
 
 import com.healio.patientservice.enums.BloodGroup;
+import com.healio.patientservice.enums.Gender;
 import lombok.*;
 
 import jakarta.persistence.*;
@@ -21,6 +22,10 @@ public class PatientProfile extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = true)
     private BloodGroup bloodGroup;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = true)
+    private Gender gender;
 
     @Column(nullable = true)
     private LocalDate dateOfBirth;
