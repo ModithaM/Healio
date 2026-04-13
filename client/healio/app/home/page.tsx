@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
+  AnimatePresence,
   motion,
   useMotionValueEvent,
   useScroll,
@@ -16,6 +18,7 @@ import {
   Bell,
   Brain,
   CalendarCheck,
+  ChevronDown,
   ChevronRight,
   ClipboardCheck,
   Clock3,
@@ -23,7 +26,9 @@ import {
   FileHeart,
   HeartPulse,
   Hospital,
+  LayoutDashboard,
   LockKeyhole,
+  LogOut,
   Mail,
   MapPin,
   Menu,
@@ -50,6 +55,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/authStore";
+import type { loggedInUser } from "@/types/user/types";
 
 type Icon = ComponentType<{ className?: string }>;
 
@@ -101,6 +108,28 @@ const navItems = [
   { label: "About", href: "#about" },
   { label: "Contact", href: "#contact" },
 ];
+
+function firstName(user: loggedInUser | null) {
+  return user?.firstName || user?.username || "User";
+}
+
+function dashboardMeta(role?: string) {
+  if (role === "ADMIN") {
+    return { href: "/admin/overview", label: "Admin Dashboard" };
+  }
+
+  if (role === "DOCTOR") {
+    return { href: "/doctor-dashboard", label: "Doctor Dashboard" };
+  }
+
+  return { href: "/patient-dashboard", label: "Patient Dashboard" };
+}
+
+function roleLabel(role?: string) {
+  if (role === "ADMIN") return "Admin";
+  if (role === "DOCTOR") return "Doctor";
+  return "Patient";
+}
 
 const services = [
   {
@@ -306,6 +335,46 @@ function Header({
   onToggleMenu: () => void;
   onCloseMenu: () => void;
 }) {
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
+  const logout = useAuthStore((state) => state.logout);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const dashboard = dashboardMeta(user?.role);
+  const userRole = roleLabel(user?.role);
+
+  const handleLogout = () => {
+    logout();
+    setProfileOpen(false);
+    onCloseMenu();
+    router.push("/signin");
+  };
+
+  const profileMenu = (
+    <div className="grid min-w-64 gap-2 rounded-lg border border-slate-200 bg-white/95 p-3 shadow-xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95">
+      <Link
+        href={dashboard.href}
+        onClick={() => {
+          setProfileOpen(false);
+          onCloseMenu();
+        }}
+        className="flex min-h-12 items-center gap-3 rounded-lg px-3 py-3 text-sm font-bold text-slate-700 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-200 dark:hover:bg-white/10"
+      >
+        <LayoutDashboard className="h-4 w-4" />
+        {dashboard.label}
+      </Link>
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="flex min-h-12 items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10"
+      >
+        <LogOut className="h-4 w-4" />
+        Logout
+      </button>
+    </div>
+  );
+
   return (
     <header className="fixed inset-x-0 top-0 z-50">
       <nav
@@ -343,13 +412,47 @@ function Header({
             <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={onToggleDark}>
               {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
-            <LinkButton href="/signin" variant="outline">
-              Login
-            </LinkButton>
-            <LinkButton href="/signup">
-              Sign Up
-              <ArrowRight className="h-4 w-4" />
-            </LinkButton>
+            {isInitialized && isLoggedIn && user ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen((value) => !value)}
+                  className="flex min-h-12 items-center gap-3 rounded-lg border border-slate-200/80 bg-white/75 px-3 py-1.5 text-left text-sm font-bold shadow-sm transition hover:border-sky-300 hover:bg-sky-50 dark:border-white/10 dark:bg-white/8 dark:hover:bg-white/12"
+                >
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-sky-500 to-emerald-500 text-white">
+                    {firstName(user).charAt(0).toUpperCase()}
+                  </span>
+                  <span className="grid gap-0.5 leading-none">
+                    <span>{firstName(user)}</span>
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{userRole}</span>
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 text-slate-400 transition", profileOpen && "rotate-180 text-sky-500")} />
+                </button>
+                <AnimatePresence>
+                  {profileOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      transition={{ duration: 0.18, ease }}
+                      className="absolute right-0 top-16 z-50 w-72 origin-top-right"
+                    >
+                      {profileMenu}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <>
+                <LinkButton href="/signin" variant="outline">
+                  Login
+                </LinkButton>
+                <LinkButton href="/signup">
+                  Sign Up
+                  <ArrowRight className="h-4 w-4" />
+                </LinkButton>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-2 xl:hidden">
@@ -378,14 +481,29 @@ function Header({
                 {item.label}
               </Link>
             ))}
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              <LinkButton href="/signin" variant="outline" onClick={onCloseMenu}>
-                Login
-              </LinkButton>
-              <LinkButton href="/signup" onClick={onCloseMenu}>
-                Sign Up
-              </LinkButton>
-            </div>
+            {isInitialized && isLoggedIn && user ? (
+              <div className="mt-2">
+                <div className="mb-2 flex items-center gap-3 rounded-lg bg-sky-50 px-3 py-2 dark:bg-white/10">
+                  <span className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-sky-500 to-emerald-500 text-sm font-bold text-white">
+                    {firstName(user).charAt(0).toUpperCase()}
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 dark:text-white">{firstName(user)}</p>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{userRole}</p>
+                  </div>
+                </div>
+                {profileMenu}
+              </div>
+            ) : (
+              <div className="mt-2 grid grid-cols-2 gap-3">
+                <LinkButton href="/signin" variant="outline" onClick={onCloseMenu}>
+                  Login
+                </LinkButton>
+                <LinkButton href="/signup" onClick={onCloseMenu}>
+                  Sign Up
+                </LinkButton>
+              </div>
+            )}
           </motion.div>
         )}
       </nav>
