@@ -383,10 +383,10 @@ function ProfileSummary({
   ];
 
   return (
-    <Card className="h-full flex flex-col rounded-[28px] p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="relative">
+    <Card className="h-full flex flex-col overflow-hidden rounded-[28px] p-5">
+      <div className="flex items-start justify-between gap-4 shrink-0">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="relative shrink-0">
             <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-sky-400 to-emerald-400 blur-md" />
             <Image
               src={defaultPatient.avatar}
@@ -396,8 +396,8 @@ function ProfileSummary({
               className="relative rounded-[28px] border-4 border-white bg-sky-50 shadow-xl dark:border-slate-900"
             />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold">{displayName}</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-2xl font-bold">{displayName}</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
               {profile ? "Profile completed" : "Profile pending"}
             </p>
@@ -405,15 +405,15 @@ function ProfileSummary({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-2.5">
+      <div className="mt-5 grid gap-2.5 overflow-y-auto min-h-0">
         {details.map((detail) => (
-          <div key={detail.label} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-white/58 p-3 dark:border-white/10 dark:bg-white/[0.05]">
+          <div key={detail.label} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-white/58 p-3 dark:border-white/10 dark:bg-white/[0.05] shrink-0">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
               <detail.icon className="h-5 w-5" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{detail.label}</p>
-              <p className="mt-1 text-sm font-bold text-slate-700 dark:text-slate-100">{detail.value || "Not provided"}</p>
+              <p className="mt-1 truncate text-sm font-bold text-slate-700 dark:text-slate-100">{detail.value || "Not provided"}</p>
             </div>
           </div>
         ))}
@@ -421,7 +421,7 @@ function ProfileSummary({
 
       <Button 
         onClick={onEditProfile}
-        className="mt-5 w-full rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+        className="mt-5 w-full shrink-0 rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
       >
         <Edit3 className="h-4 w-4" />
         Edit Profile
