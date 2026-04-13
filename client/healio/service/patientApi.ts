@@ -1,7 +1,7 @@
 import axios from "axios";
 import { apiResponse } from "@/types/common";
 import ToastUtils from "@/utils/toastUtils";
-import publicAxios from "@/lib/publicAxios";
+import privateAxios from "@/lib/privateAxios";
 
 export interface PatientProfileData {
   id?: string;
@@ -66,7 +66,7 @@ export const createPatientProfile = async (
   profileData: PatientProfileData
 ): Promise<apiResponse<PatientProfileResponse>> => {
   try {
-    const response = await publicAxios.post<PatientProfileResponse>(
+    const response = await privateAxios.post<PatientProfileResponse>(
       "/patient-service/create",
       profileData
     );
@@ -83,7 +83,7 @@ export const getPatientProfileByUserId = async (
   userId: string
 ): Promise<apiResponse<PatientProfileResponse>> => {
   try {
-    const response = await publicAxios.get<PatientProfileResponse>(
+    const response = await privateAxios.get<PatientProfileResponse>(
       `/patient-service/getPatientByUserId/${userId}`
     );
     return { success: true, data: response.data };
@@ -102,7 +102,7 @@ export const updatePatientProfile = async (
   profileData: Partial<PatientProfileData>
 ): Promise<apiResponse<PatientProfileResponse>> => {
   try {
-    const response = await publicAxios.put<PatientProfileResponse>(
+    const response = await privateAxios.put<PatientProfileResponse>(
       `/patient-service/update/${userId}`,
       profileData
     );
@@ -119,7 +119,7 @@ export const deletePatientProfile = async (
   userId: string
 ): Promise<apiResponse<void>> => {
   try {
-    await publicAxios.delete(`/patient-service/deletePatientById/${userId}`);
+    await privateAxios.delete(`/patient-service/deletePatientById/${userId}`);
     ToastUtils.success("Patient profile deleted successfully!");
     return { success: true };
   } catch (error) {
