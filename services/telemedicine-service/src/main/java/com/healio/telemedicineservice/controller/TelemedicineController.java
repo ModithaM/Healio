@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/telemedicine/sessions")
+@RequestMapping("/v1/telemedicine-service/sessions")
 @RequiredArgsConstructor
 public class TelemedicineController {
 

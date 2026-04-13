@@ -11,13 +11,13 @@ Frontend -> API Gateway -> Telemedicine Service
 Recommended gateway-facing base path:
 
 ```text
-/api/telemedicine/sessions
+/v1/telemedicine-service/sessions
 ```
 
 ## Create Session
 
 ```http
-POST /api/telemedicine/sessions
+POST /v1/telemedicine-service/sessions
 ```
 
 ```json
@@ -56,19 +56,19 @@ POST /api/telemedicine/sessions
 ## List Sessions
 
 ```http
-GET /api/telemedicine/sessions?doctorId=doctor-17&patientId=patient-42&status=SCHEDULED
+GET /v1/telemedicine-service/sessions?doctorId=doctor-17&patientId=patient-42&status=SCHEDULED
 ```
 
 ## Get Session
 
 ```http
-GET /api/telemedicine/sessions/{id}
+GET /v1/telemedicine-service/sessions/{id}
 ```
 
 ## Update Session
 
 ```http
-PUT /api/telemedicine/sessions/{id}
+PUT /v1/telemedicine-service/sessions/{id}
 ```
 
 ```json
@@ -83,13 +83,13 @@ PUT /api/telemedicine/sessions/{id}
 ## Cancel Session
 
 ```http
-PATCH /api/telemedicine/sessions/{id}/cancel
+PATCH /v1/telemedicine-service/sessions/{id}/cancel
 ```
 
 ## Start Session
 
 ```http
-PATCH /api/telemedicine/sessions/{id}/start
+PATCH /v1/telemedicine-service/sessions/{id}/start
 ```
 
 ```json
@@ -106,13 +106,13 @@ PATCH /api/telemedicine/sessions/{id}/start
 ## Complete Session
 
 ```http
-PATCH /api/telemedicine/sessions/{id}/complete
+PATCH /v1/telemedicine-service/sessions/{id}/complete
 ```
 
 ## Update Notes
 
 ```http
-PATCH /api/telemedicine/sessions/{id}/notes
+PATCH /v1/telemedicine-service/sessions/{id}/notes
 ```
 
 ```json
@@ -125,7 +125,7 @@ PATCH /api/telemedicine/sessions/{id}/notes
 ## Join Details
 
 ```http
-GET /api/telemedicine/sessions/{id}/join-details
+GET /v1/telemedicine-service/sessions/{id}/join-details
 ```
 
 ```json

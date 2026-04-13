@@ -11,7 +11,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v1/patient-service/")
+@RequestMapping("/v1/doctor-service/")
 @RequiredArgsConstructor
 public class PatientController {
 //    private final AdvertService advertService;

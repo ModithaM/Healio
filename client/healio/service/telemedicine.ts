@@ -16,7 +16,7 @@ type GetSessionsParams = {
 export const createTelemedicineSession = async (
   payload: CreateTelemedicineSessionPayload
 ): Promise<TelemedicineSession> => {
-  const response = await privateAxios.post<TelemedicineSession>("/api/telemedicine/sessions", payload);
+  const response = await privateAxios.post<TelemedicineSession>("/telemedicine-service/sessions", payload);
   return response.data;
 };
 
@@ -25,7 +25,7 @@ export const getTelemedicineSessions = async ({
   patientId,
   status,
 }: GetSessionsParams): Promise<TelemedicineSession[]> => {
-  const response = await privateAxios.get<TelemedicineSession[]>("/api/telemedicine/sessions", {
+  const response = await privateAxios.get<TelemedicineSession[]>("/telemedicine-service/sessions", {
     params: {
       doctorId,
       patientId,
@@ -36,16 +36,16 @@ export const getTelemedicineSessions = async ({
 };
 
 export const startTelemedicineSession = async (sessionId: string): Promise<StartSessionResponse> => {
-  const response = await privateAxios.patch<StartSessionResponse>(`/api/telemedicine/sessions/${sessionId}/start`);
+  const response = await privateAxios.patch<StartSessionResponse>(`/telemedicine-service/sessions/${sessionId}/start`);
   return response.data;
 };
 
 export const getTelemedicineJoinDetails = async (sessionId: string): Promise<JoinDetailsResponse> => {
-  const response = await privateAxios.get<JoinDetailsResponse>(`/api/telemedicine/sessions/${sessionId}/join-details`);
+  const response = await privateAxios.get<JoinDetailsResponse>(`/telemedicine-service/sessions/${sessionId}/join-details`);
   return response.data;
 };
 
 export const completeTelemedicineSession = async (sessionId: string): Promise<TelemedicineSession> => {
-  const response = await privateAxios.patch<TelemedicineSession>(`/api/telemedicine/sessions/${sessionId}/complete`);
+  const response = await privateAxios.patch<TelemedicineSession>(`/telemedicine-service/sessions/${sessionId}/complete`);
   return response.data;
 };

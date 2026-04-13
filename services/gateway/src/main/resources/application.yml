@@ -13,9 +13,12 @@ spring:
         connect-timeout: 60000
         response-timeout: 60s
       globalcors:
+        add-to-simple-url-handler-mapping: true
         corsConfigurations:
           '[/**]':
-            allowedOrigins: "http://localhost:3000,http://localhost:3001"
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://localhost:3001"
             allowedMethods: GET,POST,PUT,DELETE,PATCH,OPTIONS
             allowedHeaders: "*"
             allowCredentials: true

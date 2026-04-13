@@ -1029,7 +1029,7 @@ function TelemedicineSessions({
               { label: "Active sessions", value: String(sessions.filter((session) => session.status === "ONGOING").length) },
               { label: "Scheduled", value: String(sessions.filter((session) => session.status === "SCHEDULED").length) },
               { label: "Patients loaded", value: String(patientOptions.length) },
-              { label: "Gateway route", value: "/api/telemedicine" },
+              { label: "Gateway route", value: "/v1/telemedicine-service" },
             ].map((field) => (
               <div key={field.label} className="rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.06]">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{field.label}</p>
