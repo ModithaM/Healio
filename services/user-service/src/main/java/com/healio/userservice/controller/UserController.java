@@ -3,6 +3,7 @@ package com.healio.userservice.controller;
 import com.healio.userservice.dto.AuthUserDto;
 import com.healio.userservice.dto.LoginUserDto;
 import com.healio.userservice.dto.UserDto;
+import com.healio.userservice.enums.Role;
 import com.healio.userservice.model.User;
 import com.healio.userservice.request.RegisterRequest;
 import com.healio.userservice.request.UserUpdateRequest;
@@ -33,6 +34,12 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserDto>> getAll() {
         return ResponseEntity.ok(userService.getAll().stream()
+                .map(user -> modelMapper.map(user, UserDto.class)).toList());
+    }
+
+    @GetMapping("/getUsersByRole/{role}")
+    public ResponseEntity<List<UserDto>> getUsersByRole(@PathVariable Role role) {
+        return ResponseEntity.ok(userService.getUsersByRole(role).stream()
                 .map(user -> modelMapper.map(user, UserDto.class)).toList());
     }
 

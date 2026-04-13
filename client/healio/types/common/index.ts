@@ -1,4 +1,4 @@
-export type apiResponse<T = any> = {
+export type apiResponse<T = unknown> = {
     success: boolean;
     data?: T;
     error?: string;

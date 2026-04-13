@@ -16,4 +16,6 @@ public interface PatientProfileRepository extends JpaRepository<PatientProfile, 
     boolean existsByUserId(String userId);
 
     List<PatientProfile> findAllByBloodGroup(BloodGroup bloodGroup);
+
+    List<PatientProfile> findAllByOrderByCreationTimestampDesc();
 }

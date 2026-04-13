@@ -18,6 +18,7 @@ import lombok.Setter;
 import org.hibernate.annotations.GenericGenerator;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "telemedicine_sessions")
@@ -62,8 +63,14 @@ public class TelemedicineSession {
     @Column(nullable = false)
     private SessionStatus status;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "channel_name", nullable = false, unique = true)
     private String agoraChannelName;
+
+    @Column(name = "agora_channel_name", nullable = false)
+    private String agoraChannelNameMirror;
+
+    @Column(nullable = false)
+    private Integer durationMinutes;
 
     @Column(columnDefinition = "TEXT")
     private String agoraToken;
@@ -85,6 +92,8 @@ public class TelemedicineSession {
         LocalDateTime now = LocalDateTime.now();
         createdAt = now;
         updatedAt = now;
+        syncAgoraChannelNameColumns();
+        updateDurationMinutes();
         if (status == null) {
             status = SessionStatus.SCHEDULED;
         }
@@ -93,5 +102,17 @@ public class TelemedicineSession {
     @PreUpdate
     void onUpdate() {
         updatedAt = LocalDateTime.now();
+        syncAgoraChannelNameColumns();
+        updateDurationMinutes();
+    }
+
+    private void syncAgoraChannelNameColumns() {
+        agoraChannelNameMirror = agoraChannelName;
+    }
+
+    private void updateDurationMinutes() {
+        if (scheduledStartTime != null && scheduledEndTime != null) {
+            durationMinutes = Math.toIntExact(ChronoUnit.MINUTES.between(scheduledStartTime, scheduledEndTime));
+        }
     }
 }

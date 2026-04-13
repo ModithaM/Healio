@@ -17,6 +17,7 @@ import com.healio.telemedicineservice.service.TelemedicineSessionService;
 import com.healio.telemedicineservice.util.AgoraChannelNameGenerator;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class TelemedicineSessionServiceImpl implements TelemedicineSessionService {
 
     private final TelemedicineSessionRepository sessionRepository;
@@ -44,22 +46,27 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
 
         String channelName = generateUniqueChannelName(request.getAppointmentId());
         TelemedicineSession session = sessionMapper.toEntity(request, channelName);
+        ensureValidAgoraChannelName(session);
         return sessionMapper.toResponse(sessionRepository.save(session));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<TelemedicineSessionResponse> getSessions(String doctorId, String patientId, SessionStatus status) {
         Specification<TelemedicineSession> specification = buildSpecification(doctorId, patientId, status);
         return sessionRepository.findAll(specification).stream()
+                .map(session -> {
+                    ensureValidAgoraChannelName(session);
+                    return sessionRepository.save(session);
+                })
                 .map(sessionMapper::toResponse)
                 .toList();
     }
 
     @Override
-    @Transactional(readOnly = true)
     public TelemedicineSessionResponse getSessionById(String id) {
-        return sessionMapper.toResponse(getSessionOrThrow(id));
+        TelemedicineSession session = getSessionOrThrow(id);
+        ensureValidAgoraChannelName(session);
+        return sessionMapper.toResponse(sessionRepository.save(session));
     }
 
     @Override
@@ -69,6 +76,7 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
         ensureEditable(session);
 
         sessionMapper.updateEntity(session, request);
+        ensureValidAgoraChannelName(session);
         return sessionMapper.toResponse(sessionRepository.save(session));
     }
 
@@ -76,6 +84,7 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
     public TelemedicineSessionResponse cancelSession(String id) {
         TelemedicineSession session = getSessionOrThrow(id);
         ensureEditable(session);
+        ensureValidAgoraChannelName(session);
         session.setStatus(SessionStatus.CANCELLED);
         return sessionMapper.toResponse(sessionRepository.save(session));
     }
@@ -92,6 +101,8 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
 
         session.setStatus(SessionStatus.ONGOING);
         session.setActualStartTime(LocalDateTime.now());
+        ensureValidAgoraChannelName(session);
+        log.info("Starting Agora session {} with channel {}", session.getId(), session.getAgoraChannelName());
         session.setAgoraToken(agoraTokenService.generateRtcToken(session.getAgoraChannelName()));
         TelemedicineSession savedSession = sessionRepository.save(session);
         return sessionMapper.toStartResponse(savedSession, agoraTokenService.getAppId());
@@ -109,6 +120,7 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
 
         session.setStatus(SessionStatus.COMPLETED);
         session.setActualEndTime(LocalDateTime.now());
+        ensureValidAgoraChannelName(session);
         return sessionMapper.toResponse(sessionRepository.save(session));
     }
 
@@ -116,6 +128,7 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
     public TelemedicineSessionResponse updateNotes(String id, UpdateNotesRequest request) {
         TelemedicineSession session = getSessionOrThrow(id);
         ensureEditable(session);
+        ensureValidAgoraChannelName(session);
         session.setConsultationNotes(request.getConsultationNotes());
         session.setPrescriptionNotes(request.getPrescriptionNotes());
         return sessionMapper.toResponse(sessionRepository.save(session));
@@ -130,6 +143,8 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
         if (session.getStatus() == SessionStatus.COMPLETED) {
             throw new TelemedicineBadRequestException("Completed sessions do not have active join details");
         }
+        ensureValidAgoraChannelName(session);
+        log.info("Returning Agora join details for session {} with channel {}", session.getId(), session.getAgoraChannelName());
         session.setAgoraToken(agoraTokenService.generateRtcToken(session.getAgoraChannelName()));
         session = sessionRepository.save(session);
         return sessionMapper.toJoinDetailsResponse(session, agoraTokenService.getAppId());
@@ -158,6 +173,16 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
             channelName = channelNameGenerator.generate(appointmentId);
         } while (sessionRepository.existsByAgoraChannelName(channelName));
         return channelName;
+    }
+
+    private void ensureValidAgoraChannelName(TelemedicineSession session) {
+        if (!channelNameGenerator.isValid(session.getAgoraChannelName())) {
+            session.setAgoraChannelName(generateUniqueChannelName(session.getAppointmentId()));
+        }
+
+        if (!channelNameGenerator.isValid(session.getAgoraChannelName())) {
+            throw new TelemedicineBadRequestException("Unable to generate a valid Agora channel name");
+        }
     }
 
     private Specification<TelemedicineSession> buildSpecification(String doctorId, String patientId, SessionStatus status) {

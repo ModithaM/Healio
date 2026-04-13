@@ -43,16 +43,24 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { AgoraMeeting } from "@/components/telemedicine/AgoraMeeting";
+import { CreateSessionDialog } from "@/components/telemedicine/CreateSessionDialog";
+import { TelemedicineSessionTable } from "@/components/telemedicine/TelemedicineSessionTable";
+import { usePatients } from "@/hooks/usePatients";
+import { useTelemedicineSessions } from "@/hooks/useTelemedicineSessions";
+import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/store/authStore";
-import {
-  getDoctorProfileByUserId,
-  deleteDoctorAvailability,
-  DoctorProfileResponse,
-  DoctorAvailabilityResponse,
-} from "@/service/doctorApi";
-import DoctorProfileForm from "@/components/DoctorProfileForm";
 import DoctorAvailabilityForm from "@/components/DoctorAvailabilityForm";
+import DoctorProfileForm from "@/components/DoctorProfileForm";
+import {
+  deleteDoctorAvailability,
+  getDoctorProfileByUserId,
+} from "@/service/doctorApi";
+import { getTelemedicineJoinDetails, startTelemedicineSession } from "@/service/telemedicine";
+import { useAuthStore } from "@/store/authStore";
+import type { DoctorAvailabilityResponse, DoctorProfileResponse } from "@/service/doctorApi";
+import type { MeetingJoinDetails, TelemedicineSession } from "@/types/telemedicine/types";
+import ToastUtils from "@/utils/toastUtils";
 
 type Icon = ComponentType<{ className?: string }>;
 
@@ -128,12 +136,6 @@ const patients = [
   { name: "Maya Chen", date: "Apr 08, 2026", condition: "General cardiac screening", reports: 3 },
 ];
 
-const sessions = [
-  { title: "Cardiology video review", patient: "Hasindu Chanuka", time: "09:30 AM", status: "Live", tone: "bg-emerald-400 text-emerald-950" },
-  { title: "Medication follow-up", patient: "Aaron Silva", time: "12:30 PM", status: "Upcoming", tone: "bg-sky-400 text-sky-950" },
-  { title: "Report explanation", patient: "Nadia Perera", time: "04:00 PM", status: "Scheduled", tone: "bg-indigo-400 text-indigo-950" },
-];
-
 const activities = [
   { title: "Completed ECG review", detail: "Hasindu Chanuka consultation notes saved", time: "8 min ago", icon: CheckCircle2 },
   { title: "Prescription issued", detail: "Atorvastatin 10mg plan sent to patient portal", time: "24 min ago", icon: Pill },
@@ -167,6 +169,31 @@ export default function DoctorDashboardPage() {
   const user = useAuthStore((state) => state.user);
   const [isDark, setIsDark] = useState(false);
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
+  const [meetingDetails, setMeetingDetails] = useState<MeetingJoinDetails | null>(null);
+  const doctorId = user?.userId ?? "doctor-17";
+  const { patients: patientOptions } = usePatients(true);
+  const {
+    sessions: telemedicineSessions,
+    isLoading: sessionsLoading,
+    refetch: refetchTelemedicineSessions,
+  } = useTelemedicineSessions({ doctorId, enabled: Boolean(doctorId) });
+
+  const handleCreatedSession = () => {
+    void refetchTelemedicineSessions();
+  };
+
+  const handleJoinSession = async (session: TelemedicineSession) => {
+    try {
+      const details =
+        session.status === "ONGOING"
+          ? await getTelemedicineJoinDetails(session.id)
+          : await startTelemedicineSession(session.id);
+      setMeetingDetails(details);
+      void refetchTelemedicineSessions();
+    } catch (error) {
+      ToastUtils.error(getApiErrorMessage(error, "Unable to open telemedicine session."));
+    }
+  };
 
   // Doctor service state
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfileResponse | null>(null);
@@ -192,6 +219,38 @@ export default function DoctorDashboardPage() {
       setProfileModal("create");
     }
     setIsProfileLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!userId) {
+      void Promise.resolve().then(() => {
+        if (isActive) {
+          setIsProfileLoading(false);
+        }
+      });
+
+      return () => {
+        isActive = false;
+      };
+    }
+
+    void getDoctorProfileByUserId(userId).then((result) => {
+      if (!isActive) return;
+
+      if (result.success && result.data) {
+        setDoctorProfile(result.data);
+        setAvailabilitySlots(result.data.availabilitySlots || []);
+      } else if (result.error === "Doctor profile not found") {
+        setProfileModal("create");
+      }
+      setIsProfileLoading(false);
+    });
+
+    return () => {
+      isActive = false;
+    };
   }, [userId]);
 
   const handleProfileSuccess = () => {
@@ -260,7 +319,12 @@ export default function DoctorDashboardPage() {
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-8">
-              <AppointmentManagement />
+              <AppointmentManagement
+                telemedicineSessions={telemedicineSessions}
+                sessionsLoading={sessionsLoading}
+                patientOptions={patientOptions}
+                onJoinSession={handleJoinSession}
+              />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-4">
               <AvailabilityManagement
@@ -279,7 +343,13 @@ export default function DoctorDashboardPage() {
               <PatientRecordsPreview />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-7">
-              <TelemedicineSessions />
+              <TelemedicineSessions
+                sessions={telemedicineSessions}
+                isLoading={sessionsLoading}
+                patientOptions={patientOptions}
+                onJoinSession={handleJoinSession}
+                onCreateSession={() => setSessionModalOpen(true)}
+              />
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-4">
@@ -292,7 +362,13 @@ export default function DoctorDashboardPage() {
         </motion.div>
 
         <AnimatePresence>
-          {sessionModalOpen && <CreateSessionModal onClose={() => setSessionModalOpen(false)} />}
+          {sessionModalOpen && (
+            <CreateSessionDialog
+              doctorId={doctorId}
+              onClose={() => setSessionModalOpen(false)}
+              onCreated={handleCreatedSession}
+            />
+          )}
           {profileModal && (
             <DoctorProfileForm
               key={profileModal}
@@ -326,6 +402,13 @@ export default function DoctorDashboardPage() {
             />
           )}
         </AnimatePresence>
+        {meetingDetails && (
+          <AgoraMeeting
+            joinDetails={meetingDetails}
+            participantLabel="Doctor consultation room"
+            onLeave={() => setMeetingDetails(null)}
+          />
+        )}
       </main>
     </div>
   );
@@ -445,30 +528,6 @@ function ProfileMenu({ onLogout }: { onLogout: () => void }) {
         <LogOut className="h-4 w-4" />
         Logout
       </button>
-    </motion.div>
-  );
-}
-
-function CreateSessionModal({ onClose }: { onClose: () => void }) {
-  return (
-    <motion.div
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 px-4 py-6 backdrop-blur-md"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2, ease }}
-      onMouseDown={onClose}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 24, scale: 0.96 }}
-        transition={{ duration: 0.24, ease }}
-        className="w-full max-w-5xl"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <SessionGenerationForm onCancel={onClose} />
-      </motion.div>
     </motion.div>
   );
 }
@@ -642,7 +701,17 @@ function QuickActions() {
 }
 
 //Appointment Management
-function AppointmentManagement() {
+function AppointmentManagement({
+  telemedicineSessions,
+  sessionsLoading,
+  patientOptions,
+  onJoinSession,
+}: {
+  telemedicineSessions: TelemedicineSession[];
+  sessionsLoading: boolean;
+  patientOptions: { id: string; fullName: string }[];
+  onJoinSession: (session: TelemedicineSession) => void;
+}) {
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -689,6 +758,22 @@ function AppointmentManagement() {
             <AppointmentActions canJoin={appt.canJoin} mobile />
           </div>
         ))}
+      </div>
+
+      <div className="mt-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-600 dark:text-sky-300">Telemedicine</p>
+            <h3 className="mt-1 text-lg font-bold">Session queue</h3>
+          </div>
+        </div>
+        <TelemedicineSessionTable
+          sessions={telemedicineSessions}
+          isLoading={sessionsLoading}
+          viewer="doctor"
+          patients={patientOptions}
+          onJoin={onJoinSession}
+        />
       </div>
     </Card>
   );
@@ -883,177 +968,109 @@ function PatientRecordsPreview() {
 }
 
 //Telemedicine Sessions
-function TelemedicineSessions() {
-  const [showSessionForm, setShowSessionForm] = useState(false);
-
+function TelemedicineSessions({
+  sessions,
+  isLoading,
+  patientOptions,
+  onJoinSession,
+  onCreateSession,
+}: {
+  sessions: TelemedicineSession[];
+  isLoading: boolean;
+  patientOptions: { id: string; fullName: string }[];
+  onJoinSession: (session: TelemedicineSession) => void;
+  onCreateSession: () => void;
+}) {
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <SectionTitle eyebrow="Telemedicine" title="Online consultation sessions" />
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="rounded-2xl" onClick={() => setShowSessionForm((v) => !v)}>
+          <Button variant="outline" className="rounded-2xl" onClick={onCreateSession}>
             <CalendarClock className="h-4 w-4" />
-            {showSessionForm ? "Hide Form" : "Create Session"}
+            Create Session
           </Button>
-          <Button className="rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500">
+          <Button
+            className="rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500"
+            disabled={sessions.length === 0}
+            onClick={() => sessions[0] && onJoinSession(sessions[0])}
+          >
             <Video className="h-4 w-4" />
-            Open Video Room
+            Open Next Room
           </Button>
         </div>
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[1.35fr_1fr]">
-        <AnimatePresence mode="wait">
-          {showSessionForm ? (
-            <SessionGenerationForm key="session-form" onCancel={() => setShowSessionForm(false)} />
-          ) : (
-            <motion.div
-              key="session-summary"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.22, ease }}
-              className="rounded-[24px] border border-sky-200/80 bg-sky-50/75 p-4 shadow-sm dark:border-sky-300/20 dark:bg-sky-400/10"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">Create video consultation</p>
-                  <h3 className="mt-2 text-xl font-bold">Generate a secure patient session</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    Select a patient, reserve a virtual slot, and generate a meeting link with preparation notes.
-                  </p>
-                </div>
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25">
-                  <CalendarClock className="h-6 w-6" />
-                </div>
-              </div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease }}
+          className="rounded-[24px] border border-sky-200/80 bg-sky-50/75 p-4 shadow-sm dark:border-sky-300/20 dark:bg-sky-400/10"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">Create video consultation</p>
+              <h3 className="mt-2 text-xl font-bold">Generate a secure patient session</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                Select a patient, reserve a virtual slot, and generate a meeting room.
+              </p>
+            </div>
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25">
+              <CalendarClock className="h-6 w-6" />
+            </div>
+          </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {[
-                  { label: "Patient", value: "Hasindu Chanuka" },
-                  { label: "Date", value: "Apr 12, 2026" },
-                  { label: "Time slot", value: "04:30 PM" },
-                  { label: "Duration", value: "30 minutes" },
-                ].map((field) => (
-                  <div key={field.label} className="rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.06]">
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{field.label}</p>
-                    <p className="mt-1 text-sm font-bold text-slate-700 dark:text-slate-100">{field.value}</p>
-                  </div>
-                ))}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {[
+              { label: "Active sessions", value: String(sessions.filter((session) => session.status === "ONGOING").length) },
+              { label: "Scheduled", value: String(sessions.filter((session) => session.status === "SCHEDULED").length) },
+              { label: "Patients loaded", value: String(patientOptions.length) },
+              { label: "Gateway route", value: "/api/telemedicine" },
+            ].map((field) => (
+              <div key={field.label} className="rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.06]">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{field.label}</p>
+                <p className="mt-1 truncate text-sm font-bold text-slate-700 dark:text-slate-100">{field.value}</p>
               </div>
+            ))}
+          </div>
 
-              <div className="mt-3 rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.06]">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Preparation note</p>
-                <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">Ask patient to keep FBC report and latest blood pressure readings ready.</p>
-              </div>
-
-              <Button className="mt-4 w-full rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500" onClick={() => setShowSessionForm(true)}>
-                <Video className="h-4 w-4" />
-                Create Session With Patient
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <Button className="mt-4 w-full rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500" onClick={onCreateSession}>
+            <Video className="h-4 w-4" />
+            Create Session With Patient
+          </Button>
+        </motion.div>
 
         <div className="grid gap-3.5 lg:grid-cols-3 xl:grid-cols-1">
-          {sessions.map((session) => (
-            <div key={`${session.title}-${session.time}`} className="relative overflow-hidden rounded-[24px] bg-slate-950 p-4 text-white shadow-2xl shadow-sky-950/15 transition duration-300 hover:-translate-y-1">
+          {isLoading && (
+            <div className="rounded-[24px] border border-slate-200/70 bg-white/64 p-4 text-sm font-bold text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
+              Loading sessions...
+            </div>
+          )}
+          {!isLoading && sessions.map((session) => (
+            <div key={session.id} className="relative overflow-hidden rounded-[24px] bg-slate-950 p-4 text-white shadow-2xl shadow-sky-950/15 transition duration-300 hover:-translate-y-1">
               <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-sky-400/25 blur-2xl" />
               <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-emerald-400/20 blur-2xl" />
               <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between xl:flex-row">
                 <div className="min-w-0">
-                  <span className={cn("rounded-full px-3 py-1.5 text-xs font-bold", session.tone)}>{session.status}</span>
-                  <h3 className="mt-4 text-lg font-bold">{session.title}</h3>
-                  <p className="mt-2 text-sm text-slate-300">{session.patient} · {session.time}</p>
+                  <span className="rounded-full bg-sky-400 px-3 py-1.5 text-xs font-bold text-sky-950">{session.status}</span>
+                  <h3 className="mt-4 text-lg font-bold">{session.sessionTitle}</h3>
+                  <p className="mt-2 text-sm text-slate-300">{patientOptions.find((patient) => patient.id === session.patientId)?.fullName ?? session.patientId}</p>
                 </div>
-                <Button className="rounded-2xl bg-white text-slate-950 hover:bg-sky-50">
+                <Button className="rounded-2xl bg-white text-slate-950 hover:bg-sky-50" onClick={() => onJoinSession(session)}>
                   Join Now
                 </Button>
               </div>
             </div>
           ))}
+          {!isLoading && sessions.length === 0 && (
+            <div className="rounded-[24px] border border-dashed border-sky-300 bg-sky-50/70 p-4 text-sm font-semibold text-slate-500 dark:border-sky-300/30 dark:bg-sky-400/10 dark:text-slate-300">
+              No online sessions yet.
+            </div>
+          )}
         </div>
       </div>
     </Card>
-  );
-}
-
-function SessionGenerationForm({ onCancel }: { onCancel: () => void }) {
-  const labelClass = "grid min-w-0 gap-1.5";
-  const fieldClass = "h-11 w-full min-w-0 rounded-2xl border border-white/70 bg-white/80 px-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]";
-  const textareaClass = "min-h-24 w-full min-w-0 rounded-2xl border border-white/70 bg-white/80 px-3 py-3 text-sm font-semibold outline-none transition focus:border-sky-300 focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06]";
-
-  return (
-    <motion.form
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.22, ease }}
-      onSubmit={(e) => { e.preventDefault(); onCancel(); }}
-      className="max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-[24px] border border-sky-200/80 bg-sky-50/75 p-4 shadow-sm dark:border-sky-300/20 dark:bg-sky-400/10 sm:p-5 xl:p-6"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">Generate session</p>
-          <h3 className="mt-2 text-xl font-bold">Create video consultation</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-            Generate a secure telemedicine session and notify the selected patient.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-slate-200 bg-white/70 text-slate-500 transition hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:bg-white/[0.06]"
-          aria-label="Close session form"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <label className={labelClass}>
-          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Patient</span>
-          <select className={fieldClass}>
-            {patients.map((p) => <option key={p.name}>{p.name}</option>)}
-          </select>
-        </label>
-        <label className={labelClass}>
-          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Session title</span>
-          <input className={fieldClass} defaultValue="Cardiology video review" />
-        </label>
-        <label className={labelClass}>
-          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Date</span>
-          <input type="date" className={fieldClass} defaultValue="2026-04-12" />
-        </label>
-        <label className={labelClass}>
-          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Start time</span>
-          <input type="time" className={fieldClass} defaultValue="16:30" />
-        </label>
-        <label className={cn(labelClass, "sm:col-span-2")}>
-          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Duration</span>
-          <select className={fieldClass}>
-            <option>15 minutes</option>
-            <option>30 minutes</option>
-            <option>45 minutes</option>
-            <option>60 minutes</option>
-          </select>
-        </label>
-        <label className={cn(labelClass, "sm:col-span-2")}>
-          <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Preparation note</span>
-          <textarea className={textareaClass} defaultValue="Please keep your FBC report and latest blood pressure readings ready before joining." />
-        </label>
-      </div>
-
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <Button type="submit" className="flex-1 rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500">
-          <Video className="h-4 w-4" />
-          Generate Session
-        </Button>
-        <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
-    </motion.form>
   );
 }
 

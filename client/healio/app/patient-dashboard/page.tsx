@@ -38,10 +38,17 @@ import { useState, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { AgoraMeeting } from "@/components/telemedicine/AgoraMeeting";
+import { TelemedicineSessionTable } from "@/components/telemedicine/TelemedicineSessionTable";
+import { useTelemedicineSessions } from "@/hooks/useTelemedicineSessions";
+import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
+import { getTelemedicineJoinDetails } from "@/service/telemedicine";
 import { useAuthStore } from "@/store/authStore";
 import PatientProfileForm from "@/components/PatientProfileForm";
 import { getPatientProfileByUserId, PatientProfileResponse } from "@/service/patientApi";
+import type { JoinDetailsResponse, TelemedicineSession } from "@/types/telemedicine/types";
+import ToastUtils from "@/utils/toastUtils";
 
 type Icon = ComponentType<{ className?: string }>;
 
@@ -145,11 +152,20 @@ export default function PatientDashboardPage() {
   const [patientProfile, setPatientProfile] = useState<PatientProfileResponse | null>(null);
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [meetingDetails, setMeetingDetails] = useState<JoinDetailsResponse | null>(null);
   const user = useAuthStore((state) => state.user);
+  const patientId = user?.userId ?? patient.patientId;
+  const {
+    sessions: telemedicineSessions,
+    isLoading: sessionsLoading,
+  } = useTelemedicineSessions({ patientId, enabled: Boolean(patientId) });
 
   useEffect(() => {
     const loadPatientProfile = async () => {
-      if (!user?.userId) return;
+      if (!user?.userId) {
+        setIsLoadingProfile(false);
+        return;
+      }
 
       setIsLoadingProfile(true);
       const result = await getPatientProfileByUserId(user.userId);
@@ -176,6 +192,15 @@ export default function PatientDashboardPage() {
           setPatientProfile(result.data);
         }
       });
+    }
+  };
+
+  const handleJoinSession = async (session: TelemedicineSession) => {
+    try {
+      const details = await getTelemedicineJoinDetails(session.id);
+      setMeetingDetails(details);
+    } catch (error) {
+      ToastUtils.error(getApiErrorMessage(error, "Unable to open telemedicine session."));
     }
   };
 
@@ -238,7 +263,11 @@ export default function PatientDashboardPage() {
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-8">
-              <AppointmentsSection />
+              <AppointmentsSection
+                telemedicineSessions={telemedicineSessions}
+                sessionsLoading={sessionsLoading}
+                onJoinSession={handleJoinSession}
+              />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-4">
               <ReportsSection />
@@ -253,6 +282,13 @@ export default function PatientDashboardPage() {
 
           </section>
         </motion.div>
+        {meetingDetails && (
+          <AgoraMeeting
+            joinDetails={meetingDetails}
+            participantLabel="Patient consultation room"
+            onLeave={() => setMeetingDetails(null)}
+          />
+        )}
       </main>
     </div>
   );
@@ -493,7 +529,15 @@ function QuickActions({ onEditProfile }: { onEditProfile?: () => void }) {
   );
 }
 
-function AppointmentsSection() {
+function AppointmentsSection({
+  telemedicineSessions,
+  sessionsLoading,
+  onJoinSession,
+}: {
+  telemedicineSessions: TelemedicineSession[];
+  sessionsLoading: boolean;
+  onJoinSession: (session: TelemedicineSession) => void;
+}) {
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -541,6 +585,19 @@ function AppointmentsSection() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-6">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-600 dark:text-sky-300">Telemedicine</p>
+          <h3 className="mt-1 text-lg font-bold">Online consultation sessions</h3>
+        </div>
+        <TelemedicineSessionTable
+          sessions={telemedicineSessions}
+          isLoading={sessionsLoading}
+          viewer="patient"
+          onJoin={onJoinSession}
+        />
       </div>
     </Card>
   );

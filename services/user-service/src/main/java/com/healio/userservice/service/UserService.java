@@ -54,6 +54,10 @@ public class UserService {
         return userRepository.findAllByActive(Active.ACTIVE);
     }
 
+    public List<User> getUsersByRole(Role role) {
+        return userRepository.findAllByRoleAndActive(role, Active.ACTIVE);
+    }
+
     public User getUserById(String id) {
         return findUserById(id);
     }

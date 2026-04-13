@@ -12,19 +12,19 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 // 2. Discovery service (Eureka registry) - others depend on it
 // 3. Auth service - core authentication
 // 4. User service - user management
-// 5. Gateway - API entry point (after core services are ready)
-// 6. Patient & Doctor services - domain services
-// 7. Appointment & Telemedicine services - dependent services
+// 5. Patient & Doctor services - domain services
+// 6. Appointment & Telemedicine services - dependent services
+// 7. Gateway - API entry point after routed services have registered
 const services = [
   { name: 'config-service', waitTime: 6000 },
   { name: 'discovery-service', waitTime: 8000 },
   { name: 'auth-service', waitTime: 6000 },
   { name: 'user-service', waitTime: 6000 },
-  { name: 'gateway', waitTime: 6000 },
   { name: 'patient-service', waitTime: 5000 },
   { name: 'doctor-service', waitTime: 5000 },
   { name: 'appointment-service', waitTime: 5000 },
-  { name: 'telemedicine-service', waitTime: 5000 }
+  { name: 'telemedicine-service', waitTime: 5000 },
+  { name: 'gateway', waitTime: 6000 }
 ];
 
 let runningProcesses = [];

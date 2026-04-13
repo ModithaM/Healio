@@ -21,20 +21,27 @@ public class GatewayConfig {
                         .filters(f -> f.filter(filter))
                         .uri("lb://user-service"))
 
-                .route("patient-service", r -> r.path("/v1/patient-service/**")
-                        .filters(f -> f.filter(filter))
-                        .uri("lb://patient-service"))
-
-                .route("doctor-service", r -> r.path("/v1/doctor-service/**")
-                        .filters(f -> f.filter(filter))
+                .route("doctor-service", r -> r.path("/api/doctors/**", "/v1/api/doctors/**", "/v1/doctor-service/**")
+                        .filters(f -> f.filter(filter)
+                                .rewritePath("/v1/(?<segment>api/doctors/?.*)", "/${segment}"))
                         .uri("lb://doctor-service"))
 
-                .route("appointment-service", r -> r.path("/v1/appointment-service/**")
-                        .filters(f -> f.filter(filter))
+                .route("patient-service", r -> r.path("/api/patients/**", "/v1/api/patients/**", "/patient-service/**", "/v1/patient-service/**")
+                        .filters(f -> f.filter(filter)
+                                .rewritePath("/v1/(?<segment>api/patients/?.*)", "/${segment}")
+                                .rewritePath("/v1/(?<segment>patient-service/?.*)", "/${segment}")
+                                .rewritePath("/patient-service/(?<segment>.*)", "/api/patients/${segment}")
+                                .rewritePath("/v1/patient-service/(?<segment>.*)", "/api/patients/${segment}"))
+                        .uri("lb://patient-service"))
+
+                .route("appointment-service", r -> r.path("/api/appointments/**", "/v1/api/appointments/**", "/v1/appointment-service/**")
+                        .filters(f -> f.filter(filter)
+                                .rewritePath("/v1/(?<segment>api/appointments/?.*)", "/${segment}"))
                         .uri("lb://appointment-service"))
 
-                .route("telemedicine-service", r -> r.path("/v1/telemedicine-service/**")
-                        .filters(f -> f.filter(filter))
+                .route("telemedicine-service", r -> r.path("/api/telemedicine/**", "/v1/api/telemedicine/**", "/v1/telemedicine-service/**")
+                        .filters(f -> f.filter(filter)
+                                .rewritePath("/v1/(?<segment>api/telemedicine/?.*)", "/${segment}"))
                         .uri("lb://telemedicine-service"))
 
                 .route("auth-service", r -> r.path("/v1/auth/**")

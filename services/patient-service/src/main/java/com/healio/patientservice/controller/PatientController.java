@@ -1,20 +1,21 @@
 package com.healio.patientservice.controller;
 
 import com.healio.patientservice.dto.MedicalDocumentResponseDto;
+import com.healio.patientservice.dto.PatientNameResponse;
 import com.healio.patientservice.dto.PatientProfileCreateRequest;
 import com.healio.patientservice.dto.PatientProfileResponseDto;
 import com.healio.patientservice.dto.PatientProfileUpdateRequest;
 import com.healio.patientservice.service.PatientService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v1/patient-service/")
+@RequestMapping("/api/patients")
 @RequiredArgsConstructor
 public class PatientController {
 
@@ -75,5 +76,10 @@ public class PatientController {
             @PathVariable String documentId) {
         patientService.deleteMedicalDocument(userId, documentId);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/names")
+    public ResponseEntity<List<PatientNameResponse>> getPatientNames() {
+        return ResponseEntity.ok(patientService.getPatientNames());
     }
 }
