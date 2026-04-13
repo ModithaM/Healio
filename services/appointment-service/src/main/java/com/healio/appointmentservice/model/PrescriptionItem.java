@@ -2,7 +2,7 @@ package com.healio.appointmentservice.model;
 
 import lombok.*;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 @Entity(name = "prescription_items")
 @Builder

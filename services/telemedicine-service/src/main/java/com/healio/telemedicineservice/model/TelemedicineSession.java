@@ -3,7 +3,7 @@ package com.healio.telemedicineservice.model;
 import com.healio.telemedicineservice.enums.SessionStatus;
 import lombok.*;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity(name = "telemedicine_sessions")
