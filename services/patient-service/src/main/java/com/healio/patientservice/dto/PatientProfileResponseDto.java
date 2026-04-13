@@ -22,6 +22,8 @@ public class PatientProfileResponseDto {
 
     private String bloodGroup;
 
+    private String gender;
+
     private LocalDate dateOfBirth;
 
     private String emergencyContactName;

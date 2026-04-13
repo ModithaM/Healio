@@ -1,6 +1,7 @@
 package com.healio.patientservice.dto;
 
 import com.healio.patientservice.enums.BloodGroup;
+import com.healio.patientservice.enums.Gender;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PastOrPresent;
@@ -22,6 +23,8 @@ public class PatientProfileCreateRequest {
     private String userId;
 
     private BloodGroup bloodGroup;
+
+    private Gender gender;
 
     @PastOrPresent(message = "Date of birth must be in the past or present")
     private LocalDate dateOfBirth;
