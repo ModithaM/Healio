@@ -52,9 +52,11 @@ const Page = () => {
 
     try {
       const response = await registerUser(userData);
-      if (response) {
+      if (response.success) {
         ToastUtils.success("Registration successful! Please sign in.");
         await router.push("/signin");
+      } else if (response.error) {
+        setErrorMessage(response.error);
       }
     } catch (error) {
       console.error("Error registering user:", error);

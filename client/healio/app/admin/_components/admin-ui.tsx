@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
   ChevronDown,
@@ -21,6 +21,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/authStore";
 
 import { adminNavItems, adminUser } from "./admin-data";
 
@@ -70,6 +71,13 @@ function AdminSidebar() {
         </Link>
 
         <nav className="mt-5 grid gap-2">
+          <Link
+            href="/"
+            className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold text-slate-500 transition duration-300 hover:bg-sky-500/10 hover:text-sky-700 dark:text-slate-400 dark:hover:bg-sky-400/10 dark:hover:text-sky-200"
+          >
+            <Home className="h-5 w-5" />
+            Home
+          </Link>
           {adminNavItems.map((item) => {
             const active = pathname === item.href;
             return (
@@ -100,13 +108,22 @@ function AdminSidebar() {
 
 function AdminHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: () => void }) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+  const displayName = user?.firstName || adminUser.name.split(" ")[0];
+
+  const handleLogout = () => {
+    logout();
+    router.push("/signin");
+  };
 
   return (
     <header className="sticky top-4 z-30 rounded-[28px] border border-white/70 bg-white/76 px-4 py-3.5 shadow-2xl shadow-sky-950/8 backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/74 dark:shadow-black/30">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.26em] text-sky-600 dark:text-sky-300">Hospital command center</p>
-          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Welcome, Admin</h1>
+          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Welcome, {displayName}</h1>
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
@@ -130,8 +147,8 @@ function AdminHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
               >
                 <Image src={adminUser.avatar} alt={`${adminUser.name} avatar`} width={34} height={34} className="rounded-xl" />
                 <span className="hidden sm:block">
-                  <span className="block text-sm font-bold">{adminUser.name}</span>
-                  <span className="block text-xs text-slate-500 dark:text-slate-400">{adminUser.role}</span>
+                  <span className="block text-sm font-bold">{displayName}</span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">Admin</span>
                 </span>
                 <ChevronDown className={cn("h-4 w-4 text-slate-400 transition", profileOpen && "rotate-180 text-sky-500")} />
               </button>
@@ -141,17 +158,21 @@ function AdminHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: 
                   initial={{ opacity: 0, y: -8, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                  transition={{ duration: 0.18, ease }}
-                  className="absolute right-0 top-14 z-50 w-52 origin-top-right overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-2xl shadow-sky-950/12 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95"
+                  transition={{ duration: 0.2, ease }}
+                  className="absolute right-0 top-14 z-50 w-72 origin-top-right overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-2xl shadow-sky-950/12 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95"
                 >
-                  <Link href="/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-200 dark:hover:bg-sky-400/10 dark:hover:text-sky-200">
+                  <Link href="/" className="flex min-h-12 items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-slate-700 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-200 dark:hover:bg-sky-400/10 dark:hover:text-sky-200">
                     <Home className="h-4 w-4" />
                     Home
                   </Link>
-                  <Link href="/signin" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10">
+                  <Link href="/admin/overview" className="flex min-h-12 items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-slate-700 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-200 dark:hover:bg-sky-400/10">
+                    <ShieldCheck className="h-4 w-4" />
+                    Admin Dashboard
+                  </Link>
+                  <button type="button" onClick={handleLogout} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10">
                     <LogOut className="h-4 w-4" />
                     Logout
-                  </Link>
+                  </button>
                 </motion.div>
                 )}
               </AnimatePresence>
