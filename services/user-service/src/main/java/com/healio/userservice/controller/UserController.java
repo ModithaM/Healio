@@ -53,7 +53,9 @@ public class UserController {
 
     @GetMapping("/getLoginUser/{username}")
     public ResponseEntity<LoginUserDto> getLoginUser(@PathVariable String username) {
-        User user = userService.getUserByUsername(username);
+        User user = username.contains("@")
+                ? userService.getUserByEmail(username)
+                : userService.getUserByUsername(username);
         LoginUserDto loginUserDto = new LoginUserDto();
         loginUserDto.setId(user.getId());
         loginUserDto.setUsername(user.getUsername());
