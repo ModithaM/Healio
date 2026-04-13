@@ -34,12 +34,14 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
+import PatientProfileForm from "@/components/PatientProfileForm";
+import { getPatientProfileByUserId, PatientProfileResponse } from "@/service/patientApi";
 
 type Icon = ComponentType<{ className?: string }>;
 
@@ -140,6 +142,55 @@ const activities = [
 
 export default function PatientDashboardPage() {
   const [isDark, setIsDark] = useState(false);
+  const [patientProfile, setPatientProfile] = useState<PatientProfileResponse | null>(null);
+  const [showProfileForm, setShowProfileForm] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const user = useAuthStore((state) => state.user);
+
+  useEffect(() => {
+    const loadPatientProfile = async () => {
+      if (!user?.userId) return;
+
+      setIsLoadingProfile(true);
+      const result = await getPatientProfileByUserId(user.userId);
+
+      if (result.success && result.data) {
+        setPatientProfile(result.data);
+        setShowProfileForm(false);
+      } else {
+        setPatientProfile(null);
+        setShowProfileForm(true);
+      }
+
+      setIsLoadingProfile(false);
+    };
+
+    loadPatientProfile();
+  }, [user?.userId]);
+
+  const handleProfileCreated = () => {
+    setShowProfileForm(false);
+    if (user?.userId) {
+      getPatientProfileByUserId(user.userId).then((result) => {
+        if (result.success && result.data) {
+          setPatientProfile(result.data);
+        }
+      });
+    }
+  };
+
+  if (isLoadingProfile) {
+    return (
+      <div className={cn(isDark && "dark")}>
+        <main className="min-h-screen bg-[#f4fbff] dark:bg-[#020817] flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-sky-200 border-t-sky-500 dark:border-sky-900 dark:border-t-sky-400"></div>
+            <p className="mt-4 text-slate-600 dark:text-slate-400">Loading profile...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(isDark && "dark")}>
@@ -155,9 +206,23 @@ export default function PatientDashboardPage() {
         >
           <DashboardHeader isDark={isDark} onToggleDark={() => setIsDark((value) => !value)} />
 
+          {showProfileForm && user && (
+            <PatientProfileForm
+              userId={user.userId}
+              mode={patientProfile ? "edit" : "create"}
+              initialData={patientProfile || undefined}
+              onSuccess={handleProfileCreated}
+              onClose={() => setShowProfileForm(false)}
+            />
+          )}
+
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12 [grid-auto-flow:dense]">
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-3 xl:row-span-2">
-              <ProfileSummary />
+              <ProfileSummary 
+                profile={patientProfile} 
+                defaultPatient={patient}
+                onEditProfile={() => setShowProfileForm(true)}
+              />
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-9">
@@ -169,7 +234,7 @@ export default function PatientDashboardPage() {
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-9">
-              <QuickActions />
+              <QuickActions onEditProfile={() => setShowProfileForm(true)} />
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-8">
@@ -295,56 +360,69 @@ function ProfileMenu({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-function ProfileSummary() {
+function ProfileSummary({ 
+  profile, 
+  defaultPatient,
+  onEditProfile
+}: { 
+  profile: PatientProfileResponse | null; 
+  defaultPatient: typeof patient;
+  onEditProfile?: () => void;
+}) {
+  const user = useAuthStore((state) => state.user);
+  const displayName = user ? `${user.firstName} ${user.lastName}` : defaultPatient.name;
+  const displayEmail = user?.email || defaultPatient.email;
+
   const details = [
-    { label: "Patient ID", value: patient.patientId, icon: ShieldCheck },
-    { label: "Email", value: patient.email, icon: Mail },
-    { label: "Phone", value: patient.phone, icon: Phone },
-    { label: "Blood Group", value: patient.bloodGroup, icon: HeartPulse },
-    { label: "Age", value: patient.age, icon: Activity },
-    { label: "Gender", value: patient.gender, icon: UserRound },
-    { label: "Emergency Contact", value: patient.emergencyContact, icon: Bell },
+    { label: "Patient ID", value: profile?.id || defaultPatient.patientId, icon: ShieldCheck },
+    { label: "Email", value: displayEmail, icon: Mail },
+    { label: "Blood Group", value: profile?.bloodGroup || defaultPatient.bloodGroup, icon: HeartPulse },
+    { label: "Gender", value: profile?.gender ? profile.gender.charAt(0) + profile.gender.slice(1).toLowerCase() : defaultPatient.gender, icon: UserRound },
+    { label: "Date of Birth", value: profile?.dateOfBirth || defaultPatient.age, icon: Activity },
+    { label: "Emergency Contact", value: profile?.emergencyContactName || defaultPatient.emergencyContact, icon: Bell },
   ];
 
   return (
-    <Card className="h-full flex flex-col rounded-[28px] p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="relative">
+    <Card className="h-full flex flex-col overflow-hidden rounded-[28px] p-5">
+      <div className="flex items-start justify-between gap-4 shrink-0">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="relative shrink-0">
             <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-sky-400 to-emerald-400 blur-md" />
             <Image
-              src={patient.avatar}
-              alt={`${patient.name} profile avatar`}
+              src={defaultPatient.avatar}
+              alt={`${displayName} profile avatar`}
               width={92}
               height={92}
               className="relative rounded-[28px] border-4 border-white bg-sky-50 shadow-xl dark:border-slate-900"
             />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold">{patient.name}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">Primary patient account</p>
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-2xl font-bold">{displayName}</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
+              {profile ? "Profile completed" : "Profile pending"}
+            </p>
           </div>
         </div>
-        <Button size="icon" variant="outline" className="rounded-2xl">
-          <Edit3 className="h-4 w-4" />
-        </Button>
       </div>
 
-      <div className="mt-5 grid gap-2.5">
+      <div className="mt-5 grid gap-2.5 overflow-y-auto min-h-0">
         {details.map((detail) => (
-          <div key={detail.label} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-white/58 p-3 dark:border-white/10 dark:bg-white/[0.05]">
+          <div key={detail.label} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-white/58 p-3 dark:border-white/10 dark:bg-white/[0.05] shrink-0">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
               <detail.icon className="h-5 w-5" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{detail.label}</p>
-              <p className="mt-1 text-sm font-bold text-slate-700 dark:text-slate-100">{detail.value}</p>
+              <p className="mt-1 truncate text-sm font-bold text-slate-700 dark:text-slate-100">{detail.value || "Not provided"}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <Button className="mt-5 w-full rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+      <Button 
+        onClick={onEditProfile}
+        className="mt-5 w-full shrink-0 rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+      >
         <Edit3 className="h-4 w-4" />
         Edit Profile
       </Button>
@@ -368,7 +446,13 @@ function StatCard({ label, value, icon: Icon, accent, helper }: { label: string;
   );
 }
 
-function QuickActions() {
+function QuickActions({ onEditProfile }: { onEditProfile?: () => void }) {
+  const handleActionClick = (label: string) => {
+    if (label === "Update Profile" && onEditProfile) {
+      onEditProfile();
+    }
+  };
+
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <SectionTitle eyebrow="Quick actions" title="What would you like to do next?" />
@@ -376,6 +460,7 @@ function QuickActions() {
         {actions.map((action) => (
           <button
             key={action.label}
+            onClick={() => handleActionClick(action.label)}
             className="group h-full flex flex-col rounded-[20px] border border-slate-200/70 bg-white/68 p-3 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:border-sky-300 hover:bg-sky-50/80 hover:shadow-xl hover:shadow-sky-500/10 dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-sky-400/10"
           >
             <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-sky-500 to-emerald-500 text-white shadow-lg shadow-sky-500/25 transition group-hover:scale-105">
