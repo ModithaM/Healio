@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Activity,
   BarChart3,
@@ -42,6 +43,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/authStore";
 
 type Icon = ComponentType<{ className?: string }>;
 
@@ -230,6 +232,15 @@ function DashboardHeader({
   onToggleDark: () => void;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+  const displayName = user?.firstName ? `Dr. ${user.firstName}` : "Dr. Silva";
+
+  const handleLogout = () => {
+    logout();
+    router.push("/signin");
+  };
 
   return (
     <motion.header variants={fadeUp} className="sticky top-3 z-30">
@@ -241,7 +252,7 @@ function DashboardHeader({
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.26em] text-sky-600 dark:text-sky-300">Doctor Workspace</p>
-              <h1 className="text-xl font-bold sm:text-2xl">Good morning, Dr. Silva</h1>
+              <h1 className="text-xl font-bold sm:text-2xl">Good morning, {displayName}</h1>
               <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{doctor.specialty} · {doctor.department}</p>
             </div>
           </div>
@@ -256,6 +267,10 @@ function DashboardHeader({
             </label>
 
             <div className="flex items-center gap-2">
+              <Link href="/" className="hidden h-12 items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-50 dark:border-white/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-sky-400/10 sm:inline-flex">
+                <Home className="h-4 w-4" />
+                Home
+              </Link>
               <Button className="hidden h-12 rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500 px-4 shadow-lg shadow-sky-500/20 hover:from-sky-500 hover:to-emerald-400 sm:inline-flex" onClick={onCreateSession}>
                 <Video className="h-4 w-4" />
                 Create Session
@@ -274,12 +289,12 @@ function DashboardHeader({
                 >
                   <Image src={doctor.avatar} alt={`${doctor.name} avatar`} width={34} height={34} className="rounded-xl" />
                   <span className="hidden sm:block">
-                    <span className="block text-sm font-bold">Dr. Silva</span>
-                    <span className="block text-xs text-slate-500 dark:text-slate-400">Cardiology</span>
+                    <span className="block text-sm font-bold">{displayName}</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">Doctor</span>
                   </span>
                   <ChevronDown className={cn("h-4 w-4 text-slate-400 transition", profileOpen && "rotate-180 text-sky-500")} />
                 </button>
-                <AnimatePresence>{profileOpen && <ProfileMenu />}</AnimatePresence>
+                <AnimatePresence>{profileOpen && <ProfileMenu onLogout={handleLogout} />}</AnimatePresence>
               </div>
             </div>
             <Button className="h-12 w-full rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500 shadow-lg shadow-sky-500/20 hover:from-sky-500 hover:to-emerald-400 sm:hidden" onClick={onCreateSession}>
@@ -293,23 +308,27 @@ function DashboardHeader({
   );
 }
 
-function ProfileMenu() {
+function ProfileMenu({ onLogout }: { onLogout: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -8, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.96 }}
-      transition={{ duration: 0.18, ease }}
-      className="absolute right-0 top-14 z-50 w-52 origin-top-right overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-2 shadow-2xl shadow-sky-950/12 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95"
+      transition={{ duration: 0.2, ease }}
+      className="absolute right-0 top-14 z-50 w-72 origin-top-right overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-2xl shadow-sky-950/12 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95"
     >
-      <Link href="/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-200 dark:hover:bg-sky-400/10 dark:hover:text-sky-200">
+      <Link href="/" className="flex min-h-12 items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-slate-700 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-200 dark:hover:bg-sky-400/10 dark:hover:text-sky-200">
         <Home className="h-4 w-4" />
         Home
       </Link>
-      <Link href="/signin" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10">
+      <Link href="/doctor-dashboard" className="flex min-h-12 items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-slate-700 transition hover:bg-sky-50 hover:text-sky-700 dark:text-slate-200 dark:hover:bg-sky-400/10">
+        <Stethoscope className="h-4 w-4" />
+        Doctor Dashboard
+      </Link>
+      <button type="button" onClick={onLogout} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10">
         <LogOut className="h-4 w-4" />
         Logout
-      </Link>
+      </button>
     </motion.div>
   );
 }

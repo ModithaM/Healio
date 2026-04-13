@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Menu,
   X,
@@ -23,7 +24,7 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import type { loggedInUser } from "@/types/user/types";
 
-type Role = "USER" | "ADMIN" | "SENSOR_ADMIN";
+type Role = "USER" | "DOCTOR" | "ADMIN" | "SENSOR_ADMIN";
 type NavItem = { href: string; label: string };
 
 type DropdownItem =
@@ -39,25 +40,31 @@ const NAV_CONFIG: Record<"COMMON" | Role, NavItem[]> = {
 
   ],
   USER: [
-    { href: "/contact", label: "Contact Us" },
-    { href: "/create-request", label: "Request Sensor" },
+    { href: "/patient-dashboard", label: "Patient Dashboard" },
+  ],
+  DOCTOR: [
+    { href: "/doctor-dashboard", label: "Doctor Dashboard" },
   ],
   SENSOR_ADMIN: [
     { href: "/sensor-admin/overview", label: "Sensor Admin" },
     { href: "/sensor-admin/queue", label: "Pending Queue" },
   ],
   ADMIN: [
-    { href: "/admin/dashboard", label: "Admin Dashboard" }
+    { href: "/admin/overview", label: "Admin Dashboard" }
   ],
 };
 
 // Dropdown (user menu) items per role
 const DROPDOWN_CONFIG: Record<Role, DropdownItem[]> = {
   USER: [
-    { label: "Profile", href: "/my-profile", icon: <UserRound className="h-4 w-4" /> },
-    { label: "My Requests", href: "/my-requests", icon: <Users className="h-4 w-4" /> },
-    { label: "My Subscriptions", href: "/subscriptions", icon: <ListChecks className="h-4 w-4" /> },
-    { label: "Create Request", href: "/create-request", icon: <PlusCircle className="h-4 w-4" /> },
+    { label: "Patient Dashboard", href: "/patient-dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: "Home", href: "/", icon: <Activity className="h-4 w-4" /> },
+    { label: "Profile", href: "/patient-dashboard", icon: <UserRound className="h-4 w-4" /> },
+    { label: "Sign out", action: "signout", icon: <LogOut className="h-4 w-4" /> },
+  ],
+  DOCTOR: [
+    { label: "Doctor Dashboard", href: "/doctor-dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: "Home", href: "/", icon: <Activity className="h-4 w-4" /> },
     { label: "Sign out", action: "signout", icon: <LogOut className="h-4 w-4" /> },
   ],
   SENSOR_ADMIN: [
@@ -69,9 +76,8 @@ const DROPDOWN_CONFIG: Record<Role, DropdownItem[]> = {
     { label: "Sign out", action: "signout", icon: <LogOut className="h-4 w-4" /> },
   ],
   ADMIN: [
-    { label: "Profile", href: "/my-profile", icon: <UserRound className="h-4 w-4" /> },
-    { label: "Admin Dashboard", href: "/admin/dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: "My Subscriptions", href: "/subscriptions", icon: <ListChecks className="h-4 w-4" /> },
+    { label: "Admin Dashboard", href: "/admin/overview", icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: "Home", href: "/", icon: <Activity className="h-4 w-4" /> },
     { label: "Sign out", action: "signout", icon: <LogOut className="h-4 w-4" /> },
   ],
 };
@@ -224,7 +230,7 @@ function DropdownList({
               key={i}
               href={it.href}
               onClick={onNavigate}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              className="flex min-h-12 items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               {it.icon}
               {it.label}
@@ -235,7 +241,7 @@ function DropdownList({
           <button
             key={i}
             onClick={() => onAction(it.action)}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+            className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             {it.icon}
             {it.label}
@@ -283,7 +289,7 @@ function UserMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         className={cx(
-          "group inline-flex items-center gap-2 rounded-lg px-2 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
+          "group inline-flex min-h-12 items-center gap-3 rounded-lg px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
           solid ? "ring-1 ring-black/5 hover:bg-slate-50" : "ring-1 ring-white/20 hover:bg-white/10"
         )}
       >
@@ -291,18 +297,16 @@ function UserMenu({
           <AvatarImg src={avatarFromUser(user)} alt="Profile" />
           <span
             className={cx(
-              "text-sm font-medium flex items-center gap-1",
+              "grid gap-0.5 text-left leading-none",
               solid ? "text-slate-900 group-hover:text-emerald-950" : "text-white group-hover:text-white"
             )}
           >
-            {fullName(user)}
+            <span className="text-sm font-medium">{fullName(user)}</span>
             {user.role && (
               <span
                 className={cx(
-                  "text-[10px] font-semibold tracking-wide rounded px-1 py-0.5 border",
-                  solid
-                    ? "border-lime-600/30 text-lime-700 bg-lime-100/70"
-                    : "border-white/30 text-white/80 bg-white/10"
+                  "text-xs font-semibold",
+                  solid ? "text-slate-500" : "text-white/75"
                 )}
               >
                 {user.role}
@@ -318,25 +322,32 @@ function UserMenu({
         />
       </button>
 
-      {open && (
-        <div
-          role="menu"
-          className={cx(
-            "absolute right-0 mt-2 w-64 overflow-hidden rounded-xl border bg-white shadow-lg",
-            solid ? "border-slate-100" : "border-white/20"
-          )}
-        >
-          <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/60">
-            <p className="text-xs font-semibold text-slate-500">Signed in as</p>
-            <p className="text-sm font-medium text-slate-800 break-all">{user.username}</p>
-          </div>
-          <DropdownList
-            items={items}
-            onAction={handleAction}
-            onNavigate={() => setOpen(false)}
-          />
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className={cx(
+              "absolute right-0 mt-3 w-72 origin-top-right overflow-hidden rounded-xl border bg-white shadow-xl",
+              solid ? "border-slate-100" : "border-white/20"
+            )}
+          >
+            <div className="border-b border-slate-100 bg-slate-50/60 px-4 py-3">
+              <p className="text-xs font-semibold text-slate-500">Signed in as</p>
+              <p className="text-sm font-medium text-slate-800 break-all">{user.username}</p>
+              {user.role && <p className="mt-1 text-xs font-semibold text-slate-500">{user.role}</p>}
+            </div>
+            <DropdownList
+              items={items}
+              onAction={handleAction}
+              onNavigate={() => setOpen(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
