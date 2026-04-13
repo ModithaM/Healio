@@ -71,11 +71,11 @@ export function AuthShell({
       <main className="relative min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_left,rgba(14,165,233,0.16),transparent_34%),linear-gradient(135deg,#f9fdff_0%,#eaf8ff_46%,#f6fff9_100%)] px-4 py-4 text-slate-950 transition-colors duration-500 dark:bg-[radial-gradient(ellipse_at_top_left,rgba(14,165,233,0.24),transparent_34%),linear-gradient(135deg,#020617_0%,#07111f_50%,#03130e_100%)] dark:text-white sm:px-6 lg:px-8 lg:py-3">
         <div className="absolute -left-32 top-20 h-80 w-80 rounded-full bg-sky-300/30 blur-3xl dark:bg-sky-500/20" />
         <div className="absolute -right-28 bottom-10 h-96 w-96 rounded-full bg-emerald-300/25 blur-3xl dark:bg-emerald-500/15" />
-        <div className="absolute left-1/2 top-32 h-px w-[90rem] -translate-x-1/2 bg-gradient-to-r from-transparent via-sky-300/70 to-transparent" />
+        <div className="absolute left-1/2 top-32 h-px w-360 -translate-x-1/2 bg-linear-to-r from-transparent via-sky-300/70 to-transparent" />
 
         <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-to-br from-sky-500 to-emerald-500 text-white shadow-lg shadow-sky-500/25">
+            <span className="grid h-10 w-10 place-items-center rounded-lg bg-linear-to-br from-sky-500 to-emerald-500 text-white shadow-lg shadow-sky-500/25">
               <HeartPulse className="h-5 w-5" />
             </span>
             <span>
@@ -152,16 +152,16 @@ function AuthIllustrationPanel({
       initial={{ opacity: 0, x: 42, scale: 0.98 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       transition={{ duration: 0.85, ease }}
-      className={cn("relative min-h-[390px] px-3 sm:px-5 lg:min-h-[540px] lg:px-4", className)}
+      className={cn("relative min-h-97.5 px-3 sm:px-5 lg:min-h-135 lg:px-4", className)}
     >
-      <div className="absolute inset-x-8 inset-y-6 rounded-[42px] bg-gradient-to-br from-sky-300/35 via-indigo-300/20 to-emerald-300/35 blur-3xl dark:from-sky-500/20 dark:via-indigo-500/15 dark:to-emerald-500/20" />
-      <div className="relative mx-auto min-h-[520px] overflow-hidden rounded-[34px] border border-white/70 bg-white/42 p-6 shadow-2xl shadow-sky-950/15 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.07] lg:min-h-[520px] lg:p-7">
+      <div className="absolute inset-x-8 inset-y-6 rounded-[42px] bg-linear-to-br from-sky-300/35 via-indigo-300/20 to-emerald-300/35 blur-3xl dark:from-sky-500/20 dark:via-indigo-500/15 dark:to-emerald-500/20" />
+      <div className="relative mx-auto min-h-130 overflow-hidden rounded-[34px] border border-white/70 bg-white/42 p-6 shadow-2xl shadow-sky-950/15 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.07] lg:min-h-[520px] lg:p-7">
         <div className="absolute right-10 top-10 h-28 w-28 rounded-full bg-sky-300/25 blur-2xl" />
         <div className="absolute bottom-20 left-8 h-36 w-36 rounded-full bg-emerald-300/20 blur-2xl" />
         <motion.div
           animate={{ y: [0, -18, 0] }}
           transition={{ duration: 6.2, repeat: Infinity, ease: "easeInOut" }}
-          className="relative mx-auto aspect-square max-w-[300px] lg:max-w-[360px]"
+          className="relative mx-auto aspect-square max-w-75 lg:max-w-90"
         >
           <Image
             src={illustration.src}
@@ -227,6 +227,8 @@ type AuthInputProps = {
   label: string;
   icon: LucideIcon;
   className?: string;
+  error?: string;
+  touched?: boolean;
 } & InputHTMLAttributes<HTMLInputElement>;
 
 export function AuthInput({
@@ -234,8 +236,12 @@ export function AuthInput({
   label,
   icon: Icon,
   className,
+  error,
+  touched,
   ...props
 }: AuthInputProps) {
+  const hasError = touched && error;
+
   return (
     <motion.div variants={authFadeUp} className={className}>
       <label
@@ -248,10 +254,25 @@ export function AuthInput({
         <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
         <input
           id={id}
-          className="h-11 w-full rounded-xl border border-slate-200/80 bg-white/75 py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-900 shadow-sm outline-none backdrop-blur-md transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-500 dark:focus:border-sky-300/60 dark:focus:bg-white/[0.09]"
+          className={cn(
+            "h-11 w-full rounded-xl border bg-white/75 py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-900 shadow-sm outline-none backdrop-blur-md transition placeholder:text-slate-400 focus:bg-white focus:ring-4 dark:bg-white/[0.06] dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-white/[0.09]",
+            hasError
+              ? "border-red-300 focus:border-red-400 focus:ring-red-400/15 dark:border-red-400/50 dark:focus:border-red-400/70"
+              : "border-slate-200/80 focus:border-sky-300 focus:ring-sky-400/15 dark:border-white/10 dark:focus:border-sky-300/60"
+          )}
           {...props}
         />
       </div>
+      {hasError && (
+        <motion.p
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          className="mt-1.5 text-xs font-semibold text-red-600 dark:text-red-400"
+        >
+          {error}
+        </motion.p>
+      )}
     </motion.div>
   );
 }
