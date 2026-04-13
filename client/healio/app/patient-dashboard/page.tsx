@@ -206,16 +206,23 @@ export default function PatientDashboardPage() {
         >
           <DashboardHeader isDark={isDark} onToggleDark={() => setIsDark((value) => !value)} />
 
-          {!patientProfile && showProfileForm && user && (
+          {showProfileForm && user && (
             <PatientProfileForm
               userId={user.userId}
+              mode={patientProfile ? "edit" : "create"}
+              initialData={patientProfile || undefined}
               onSuccess={handleProfileCreated}
+              onClose={() => setShowProfileForm(false)}
             />
           )}
 
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12 [grid-auto-flow:dense]">
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-3 xl:row-span-2">
-              <ProfileSummary profile={patientProfile} defaultPatient={patient} />
+              <ProfileSummary 
+                profile={patientProfile} 
+                defaultPatient={patient}
+                onEditProfile={() => setShowProfileForm(true)}
+              />
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-9">
@@ -355,10 +362,12 @@ function ProfileMenu({ onLogout }: { onLogout: () => void }) {
 
 function ProfileSummary({ 
   profile, 
-  defaultPatient 
+  defaultPatient,
+  onEditProfile
 }: { 
   profile: PatientProfileResponse | null; 
   defaultPatient: typeof patient;
+  onEditProfile?: () => void;
 }) {
   const user = useAuthStore((state) => state.user);
   const displayName = user ? `${user.firstName} ${user.lastName}` : defaultPatient.name;
@@ -410,7 +419,10 @@ function ProfileSummary({
         ))}
       </div>
 
-      <Button className="mt-5 w-full rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+      <Button 
+        onClick={onEditProfile}
+        className="mt-5 w-full rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+      >
         <Edit3 className="h-4 w-4" />
         Edit Profile
       </Button>

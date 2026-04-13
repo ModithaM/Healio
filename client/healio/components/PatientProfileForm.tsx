@@ -5,10 +5,13 @@ import { motion } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { createPatientProfile, PatientProfileData } from "@/service/patientApi";
+import { createPatientProfile, updatePatientProfile, PatientProfileData } from "@/service/patientApi";
+import { patientProfileValidationSchema } from "@/validation/patientProfileSchema";
 
 interface PatientProfileFormProps {
   userId: string;
+  mode?: "create" | "edit";
+  initialData?: PatientProfileData;
   onSuccess?: () => void;
   onClose?: () => void;
 }
@@ -26,18 +29,30 @@ const bloodGroups = [
 
 const genders = ["MALE", "FEMALE", "OTHER"];
 
-export default function PatientProfileForm({ userId, onSuccess, onClose }: PatientProfileFormProps) {
-  const [formData, setFormData] = useState<PatientProfileData>({
-    userId,
-    bloodGroup: "",
-    gender: "",
-    dateOfBirth: "",
-    emergencyContactName: "",
-    emergencyContactPhone: "",
-  });
+interface FormErrors {
+  [key: string]: string;
+}
+
+export default function PatientProfileForm({ 
+  userId, 
+  mode = "create",
+  initialData,
+  onSuccess, 
+  onClose 
+}: PatientProfileFormProps) {
+  const [formData, setFormData] = useState<PatientProfileData>(
+    initialData || {
+      userId,
+      bloodGroup: "",
+      gender: "",
+      dateOfBirth: "",
+      emergencyContactName: "",
+      emergencyContactPhone: "",
+    }
+  );
 
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -45,22 +60,48 @@ export default function PatientProfileForm({ userId, onSuccess, onClose }: Patie
       ...prev,
       [name]: value || undefined,
     }));
-    setError(null);
+    
+    if (errors[name]) {
+      setErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
+    setErrors({});
 
-    const result = await createPatientProfile(formData);
+    try {
+      await patientProfileValidationSchema.validate(formData, { abortEarly: false });
 
-    if (result.success) {
-      onSuccess?.();
-    } else {
-      setError(result.error || "Failed to create profile");
+      const result = mode === "create" 
+        ? await createPatientProfile(formData)
+        : await updatePatientProfile(userId, formData);
+
+      if (result.success) {
+        onSuccess?.();
+      } else {
+        setErrors({ form: result.error || `Failed to ${mode} profile` });
+      }
+    } catch (error: any) {
+      const newErrors: FormErrors = {};
+      if (error.inner && Array.isArray(error.inner)) {
+        error.inner.forEach((err: any) => {
+          if (err.path) {
+            newErrors[err.path] = err.message;
+          }
+        });
+      } else if (error.message) {
+        newErrors.form = error.message;
+      }
+      setErrors(newErrors);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
@@ -78,7 +119,9 @@ export default function PatientProfileForm({ userId, onSuccess, onClose }: Patie
       >
         <Card className="rounded-[28px] border-white/70 bg-white/95 p-6 shadow-2xl dark:border-white/10 dark:bg-slate-950/95 dark:shadow-black/30">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Complete Your Profile</h2>
+            <h2 className="text-2xl font-bold">
+              {mode === "create" ? "Complete Your Profile" : "Edit Your Profile"}
+            </h2>
             {onClose && (
               <button
                 onClick={onClose}
@@ -90,20 +133,26 @@ export default function PatientProfileForm({ userId, onSuccess, onClose }: Patie
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
+            {errors.form && (
               <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
-                {error}
+                {errors.form}
               </div>
             )}
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold mb-2">Gender</label>
+                <label className="block text-sm font-semibold mb-2">
+                  Gender <span className="text-red-500">*</span>
+                </label>
                 <select
                   name="gender"
                   value={formData.gender || ""}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:border-white/10 dark:bg-white/5 dark:focus:ring-sky-400/20"
+                  className={`w-full rounded-xl border px-4 py-2.5 text-sm font-medium bg-white dark:bg-white/5 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-400/20 ${
+                    errors.gender
+                      ? "border-red-400 dark:border-red-500"
+                      : "border-slate-200 dark:border-white/10"
+                  }`}
                 >
                   <option value="">Select Gender</option>
                   {genders.map((gender) => (
@@ -112,15 +161,24 @@ export default function PatientProfileForm({ userId, onSuccess, onClose }: Patie
                     </option>
                   ))}
                 </select>
+                {errors.gender && (
+                  <p className="mt-1 text-xs text-red-500">{errors.gender}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-2">Blood Group</label>
+                <label className="block text-sm font-semibold mb-2">
+                  Blood Group <span className="text-red-500">*</span>
+                </label>
                 <select
                   name="bloodGroup"
                   value={formData.bloodGroup || ""}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:border-white/10 dark:bg-white/5 dark:focus:ring-sky-400/20"
+                  className={`w-full rounded-xl border px-4 py-2.5 text-sm font-medium bg-white dark:bg-white/5 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-400/20 ${
+                    errors.bloodGroup
+                      ? "border-red-400 dark:border-red-500"
+                      : "border-slate-200 dark:border-white/10"
+                  }`}
                 >
                   <option value="">Select Blood Group</option>
                   {bloodGroups.map((bg) => (
@@ -129,41 +187,71 @@ export default function PatientProfileForm({ userId, onSuccess, onClose }: Patie
                     </option>
                   ))}
                 </select>
+                {errors.bloodGroup && (
+                  <p className="mt-1 text-xs text-red-500">{errors.bloodGroup}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-2">Date of Birth</label>
+                <label className="block text-sm font-semibold mb-2">
+                  Date of Birth <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
                   name="dateOfBirth"
                   value={formData.dateOfBirth || ""}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:border-white/10 dark:bg-white/5 dark:focus:ring-sky-400/20"
+                  className={`w-full rounded-xl border px-4 py-2.5 text-sm font-medium bg-white dark:bg-white/5 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:focus:ring-sky-400/20 ${
+                    errors.dateOfBirth
+                      ? "border-red-400 dark:border-red-500"
+                      : "border-slate-200 dark:border-white/10"
+                  }`}
                 />
+                {errors.dateOfBirth && (
+                  <p className="mt-1 text-xs text-red-500">{errors.dateOfBirth}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-2">Emergency Contact Phone</label>
+                <label className="block text-sm font-semibold mb-2">
+                  Emergency Contact Phone <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="tel"
                   name="emergencyContactPhone"
                   placeholder="+94 77 248 9031"
                   value={formData.emergencyContactPhone || ""}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:border-white/10 dark:bg-white/5 dark:placeholder:text-slate-500 dark:focus:ring-sky-400/20"
+                  className={`w-full rounded-xl border px-4 py-2.5 text-sm font-medium placeholder:text-slate-400 bg-white dark:bg-white/5 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:placeholder:text-slate-500 dark:focus:ring-sky-400/20 ${
+                    errors.emergencyContactPhone
+                      ? "border-red-400 dark:border-red-500"
+                      : "border-slate-200 dark:border-white/10"
+                  }`}
                 />
+                {errors.emergencyContactPhone && (
+                  <p className="mt-1 text-xs text-red-500">{errors.emergencyContactPhone}</p>
+                )}
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold mb-2">Emergency Contact Name</label>
+                <label className="block text-sm font-semibold mb-2">
+                  Emergency Contact Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="emergencyContactName"
                   placeholder="John Doe"
                   value={formData.emergencyContactName || ""}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:border-white/10 dark:bg-white/5 dark:placeholder:text-slate-500 dark:focus:ring-sky-400/20"
+                  className={`w-full rounded-xl border px-4 py-2.5 text-sm font-medium placeholder:text-slate-400 bg-white dark:bg-white/5 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 dark:placeholder:text-slate-500 dark:focus:ring-sky-400/20 ${
+                    errors.emergencyContactName
+                      ? "border-red-400 dark:border-red-500"
+                      : "border-slate-200 dark:border-white/10"
+                  }`}
                 />
+                {errors.emergencyContactName && (
+                  <p className="mt-1 text-xs text-red-500">{errors.emergencyContactName}</p>
+                )}
               </div>
             </div>
 
@@ -187,10 +275,12 @@ export default function PatientProfileForm({ userId, onSuccess, onClose }: Patie
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating Profile...
+                    {mode === "create" ? "Creating Profile..." : "Updating Profile..."}
                   </>
-                ) : (
+                ) : mode === "create" ? (
                   "Create Profile"
+                ) : (
+                  "Update Profile"
                 )}
               </Button>
             </div>
