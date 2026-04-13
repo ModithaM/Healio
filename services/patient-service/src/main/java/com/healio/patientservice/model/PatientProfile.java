@@ -3,7 +3,7 @@ package com.healio.patientservice.model;
 import com.healio.patientservice.enums.BloodGroup;
 import lombok.*;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.util.List;
 

@@ -3,7 +3,7 @@ package com.healio.appointmentservice.model;
 import com.healio.appointmentservice.enums.AppointmentStatus;
 import lombok.*;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
