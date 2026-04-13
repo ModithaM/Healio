@@ -44,3 +44,8 @@ export const getTelemedicineJoinDetails = async (sessionId: string): Promise<Joi
   const response = await privateAxios.get<JoinDetailsResponse>(`/api/telemedicine/sessions/${sessionId}/join-details`);
   return response.data;
 };
+
+export const completeTelemedicineSession = async (sessionId: string): Promise<TelemedicineSession> => {
+  const response = await privateAxios.patch<TelemedicineSession>(`/api/telemedicine/sessions/${sessionId}/complete`);
+  return response.data;
+};

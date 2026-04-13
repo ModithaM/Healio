@@ -43,11 +43,11 @@ import { TelemedicineSessionTable } from "@/components/telemedicine/Telemedicine
 import { useTelemedicineSessions } from "@/hooks/useTelemedicineSessions";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
-import { getTelemedicineJoinDetails } from "@/service/telemedicine";
+import { getTelemedicineJoinDetails, startTelemedicineSession } from "@/service/telemedicine";
 import { useAuthStore } from "@/store/authStore";
 import PatientProfileForm from "@/components/PatientProfileForm";
 import { getPatientProfileByUserId, PatientProfileResponse } from "@/service/patientApi";
-import type { JoinDetailsResponse, TelemedicineSession } from "@/types/telemedicine/types";
+import type { MeetingJoinDetails, TelemedicineSession } from "@/types/telemedicine/types";
 import ToastUtils from "@/utils/toastUtils";
 
 type Icon = ComponentType<{ className?: string }>;
@@ -152,12 +152,13 @@ export default function PatientDashboardPage() {
   const [patientProfile, setPatientProfile] = useState<PatientProfileResponse | null>(null);
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const [meetingDetails, setMeetingDetails] = useState<JoinDetailsResponse | null>(null);
+  const [meetingDetails, setMeetingDetails] = useState<MeetingJoinDetails | null>(null);
   const user = useAuthStore((state) => state.user);
   const patientId = user?.userId ?? patient.patientId;
   const {
     sessions: telemedicineSessions,
     isLoading: sessionsLoading,
+    refetch: refetchTelemedicineSessions,
   } = useTelemedicineSessions({ patientId, enabled: Boolean(patientId) });
 
   useEffect(() => {
@@ -197,8 +198,12 @@ export default function PatientDashboardPage() {
 
   const handleJoinSession = async (session: TelemedicineSession) => {
     try {
-      const details = await getTelemedicineJoinDetails(session.id);
+      const details =
+        session.status === "ONGOING"
+          ? await getTelemedicineJoinDetails(session.id)
+          : await startTelemedicineSession(session.id);
       setMeetingDetails(details);
+      void refetchTelemedicineSessions();
     } catch (error) {
       ToastUtils.error(getApiErrorMessage(error, "Unable to open telemedicine session."));
     }
@@ -286,7 +291,10 @@ export default function PatientDashboardPage() {
           <AgoraMeeting
             joinDetails={meetingDetails}
             participantLabel="Patient consultation room"
-            onLeave={() => setMeetingDetails(null)}
+            onLeave={() => {
+              setMeetingDetails(null);
+              void refetchTelemedicineSessions();
+            }}
           />
         )}
       </main>

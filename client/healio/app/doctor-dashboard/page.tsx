@@ -406,7 +406,10 @@ export default function DoctorDashboardPage() {
           <AgoraMeeting
             joinDetails={meetingDetails}
             participantLabel="Doctor consultation room"
-            onLeave={() => setMeetingDetails(null)}
+            onLeave={() => {
+              setMeetingDetails(null);
+              void refetchTelemedicineSessions();
+            }}
           />
         )}
       </main>

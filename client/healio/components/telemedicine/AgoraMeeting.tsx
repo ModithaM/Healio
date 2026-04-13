@@ -4,17 +4,19 @@ import type {
   IAgoraRTCClient,
   ICameraVideoTrack,
   ILocalAudioTrack,
+  ILocalTrack,
   ILocalVideoTrack,
   IRemoteAudioTrack,
   IRemoteVideoTrack,
   UID,
 } from "agora-rtc-sdk-ng";
 import { Loader2, Mic, MicOff, PhoneOff, Video, VideoOff } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
+import { completeTelemedicineSession } from "@/service/telemedicine";
 import type { MeetingJoinDetails } from "@/types/telemedicine/types";
 import ToastUtils from "@/utils/toastUtils";
 
@@ -32,6 +34,7 @@ type RemoteTrack = {
 
 const remoteContainerId = (uid: UID) => `remote-video-${String(uid).replace(/[^A-Za-z0-9_-]/g, "-")}`;
 const validAgoraChannelPattern = /^[A-Za-z0-9 !#$%&()+\-:;<=>?@[\]^_{}|~,.]+$/;
+const joinTimeoutMs = 45_000;
 
 const getByteLength = (value: string) => new TextEncoder().encode(value).length;
 
@@ -61,13 +64,54 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
   const localVideoRef = useRef<HTMLDivElement | null>(null);
   const clientRef = useRef<IAgoraRTCClient | null>(null);
   const localTracksRef = useRef<{ audio?: ILocalAudioTrack; video?: ICameraVideoTrack | ILocalVideoTrack }>({});
+  const hasLeftRef = useRef(false);
   const [remoteTracks, setRemoteTracks] = useState<RemoteTrack[]>([]);
   const [isConnecting, setIsConnecting] = useState(true);
+  const [isLeaving, setIsLeaving] = useState(false);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
 
+  const leaveAgora = useCallback(async (updateUi = true) => {
+    if (hasLeftRef.current) {
+      return;
+    }
+
+    hasLeftRef.current = true;
+    const client = clientRef.current;
+    const localTracks = Object.values(localTracksRef.current).filter(Boolean) as ILocalTrack[];
+
+    try {
+      if (client && localTracks.length > 0) {
+        await client.unpublish(localTracks);
+      }
+    } catch {
+      // Leaving should continue even if Agora has already unpublished tracks.
+    }
+
+    localTracks.forEach((track) => {
+      track.stop();
+      track.close();
+    });
+
+    localTracksRef.current = {};
+    localVideoRef.current?.replaceChildren();
+
+    try {
+      await client?.leave();
+    } finally {
+      clientRef.current = null;
+      if (updateUi) {
+        setRemoteTracks([]);
+        setMicEnabled(false);
+        setCameraEnabled(false);
+        setIsConnecting(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
+    let joinTimeout: ReturnType<typeof setTimeout> | undefined;
 
     const join = async () => {
       setIsConnecting(true);
@@ -82,6 +126,14 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
         const AgoraRTC = (await import("agora-rtc-sdk-ng")).default;
         const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
         clientRef.current = client;
+        joinTimeout = setTimeout(() => {
+          if (!isMounted || hasLeftRef.current) {
+            return;
+          }
+
+          ToastUtils.error("Agora connection is taking too long. Please check camera and microphone permissions, then try again.");
+          void leaveAgora();
+        }, joinTimeoutMs);
 
         client.on("user-published", async (user, mediaType) => {
           await client.subscribe(user, mediaType);
@@ -127,7 +179,21 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
           null
         );
 
+        if (!isMounted || hasLeftRef.current) {
+          await client.leave();
+          return;
+        }
+
         const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+        if (!isMounted || hasLeftRef.current) {
+          audioTrack.stop();
+          audioTrack.close();
+          videoTrack.stop();
+          videoTrack.close();
+          await client.leave();
+          return;
+        }
+
         localTracksRef.current = { audio: audioTrack, video: videoTrack };
         if (localVideoRef.current) {
           videoTrack.play(localVideoRef.current);
@@ -135,10 +201,17 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
         await client.publish([audioTrack, videoTrack]);
 
         if (isMounted) {
+          if (joinTimeout) {
+            clearTimeout(joinTimeout);
+          }
           setIsConnecting(false);
         }
       } catch (error) {
+        if (joinTimeout) {
+          clearTimeout(joinTimeout);
+        }
         ToastUtils.error(getApiErrorMessage(error, "Unable to join the video session."));
+        await leaveAgora(false);
         if (isMounted) {
           setIsConnecting(false);
         }
@@ -149,9 +222,12 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
 
     return () => {
       isMounted = false;
-      void leaveAgora();
+      if (joinTimeout) {
+        clearTimeout(joinTimeout);
+      }
+      void leaveAgora(false);
     };
-  }, [agoraAppId, agoraChannelName, agoraToken, joinDetails]);
+  }, [agoraAppId, agoraChannelName, agoraToken, joinDetails, leaveAgora]);
 
   useEffect(() => {
     remoteTracks.forEach((track) => {
@@ -162,18 +238,19 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
     });
   }, [remoteTracks]);
 
-  const leaveAgora = async () => {
-    const tracks = localTracksRef.current;
-    tracks.audio?.close();
-    tracks.video?.close();
-    localTracksRef.current = {};
-    await clientRef.current?.leave();
-    clientRef.current = null;
-  };
-
   const handleLeave = async () => {
+    setIsLeaving(true);
     await leaveAgora();
-    onLeave();
+
+    try {
+      await completeTelemedicineSession(joinDetails.sessionId);
+      ToastUtils.success("Session completed.");
+    } catch (error) {
+      ToastUtils.error(getApiErrorMessage(error, "Unable to complete the session."));
+    } finally {
+      setIsLeaving(false);
+      onLeave();
+    }
   };
 
   const toggleMic = async () => {
@@ -250,9 +327,10 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
               <Button
                 className={cn("rounded-2xl bg-rose-500 shadow-rose-500/20 hover:bg-rose-400")}
                 onClick={handleLeave}
+                disabled={isLeaving}
               >
-                <PhoneOff className="h-4 w-4" />
-                Leave call
+                {isLeaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <PhoneOff className="h-4 w-4" />}
+                {isLeaving ? "Ending call" : "Leave call"}
               </Button>
             </div>
           </div>
