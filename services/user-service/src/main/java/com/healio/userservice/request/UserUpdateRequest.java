@@ -3,7 +3,7 @@ package com.healio.userservice.request;
 import com.healio.userservice.model.UserDetails;
 import lombok.Data;
 
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
 
 @Data
 public class UserUpdateRequest {

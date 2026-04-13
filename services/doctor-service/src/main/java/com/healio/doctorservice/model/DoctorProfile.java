@@ -3,7 +3,7 @@ package com.healio.doctorservice.model;
 import com.healio.doctorservice.enums.VerificationStatus;
 import lombok.*;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.List;
 

@@ -3,7 +3,7 @@ package com.healio.patientservice.model;
 import com.healio.patientservice.enums.FileType;
 import lombok.*;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 
 @Entity(name = "medical_documents")
 @Builder
