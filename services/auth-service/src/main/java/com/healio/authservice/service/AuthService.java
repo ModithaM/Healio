@@ -27,7 +27,7 @@ public class AuthService {
             throw new WrongCredentialsException("Bad credentials");
         }
 
-        String token = jwtService.generateToken(request.getUsername());
+        String token = jwtService.generateToken(userDto.getUsername());
 
         return LoginResponseDto.builder()
                 .token(token)
