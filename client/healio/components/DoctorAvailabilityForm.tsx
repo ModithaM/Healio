@@ -257,7 +257,7 @@ export default function DoctorAvailabilityForm({
               )}
               <Button
                 type="submit"
-                className="flex-1 bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-400 hover:to-emerald-400"
+                className="flex-1 bg-linear-to-r from-sky-500 to-emerald-500 hover:from-sky-400 hover:to-emerald-400"
                 disabled={isLoading}
               >
                 {isLoading ? (
