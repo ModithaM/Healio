@@ -73,6 +73,12 @@ public class DoctorService {
         doctorRepository.delete(doctor);
     }
 
+    public List<DoctorProfileResponseDto> getAllDoctors() {
+        return doctorRepository.findAll().stream()
+                .map(this::enrichDoctorResponse)
+                .collect(Collectors.toList());
+    }
+
     //private Helpers
     private DoctorProfileResponseDto enrichDoctorResponse(DoctorProfile doctor) {
         DoctorProfileResponseDto dto = modelMapper.map(doctor, DoctorProfileResponseDto.class);
