@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Stethoscope,
   Sun,
+  Trash2,
   UploadCloud,
   UserRound,
   Video,
@@ -46,7 +47,7 @@ import { cn } from "@/lib/utils";
 import { getTelemedicineJoinDetails, startTelemedicineSession } from "@/service/telemedicine";
 import { useAuthStore } from "@/store/authStore";
 import PatientProfileForm from "@/components/PatientProfileForm";
-import { getPatientProfileByUserId, PatientProfileResponse } from "@/service/patientApi";
+import { deletePatientProfile, getPatientProfileByUserId, PatientProfileResponse } from "@/service/patientApi";
 import { getAllDoctors } from "@/service/doctorApi";
 import {
   AppointmentResponse,
@@ -113,6 +114,7 @@ export default function PatientDashboardPage() {
   const [patientProfile, setPatientProfile] = useState<PatientProfileResponse | null>(null);
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
   const [meetingDetails, setMeetingDetails] = useState<MeetingJoinDetails | null>(null);
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
   const [prescriptions, setPrescriptions] = useState<PrescriptionResponse[]>([]);
@@ -208,6 +210,25 @@ export default function PatientDashboardPage() {
           setPatientProfile(result.data);
         }
       });
+    }
+  };
+
+  const handleDeleteProfile = async () => {
+    if (!user?.userId) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete your patient profile? This action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    setIsDeleteLoading(true);
+    const result = await deletePatientProfile(user.userId);
+    setIsDeleteLoading(false);
+
+    if (result.success) {
+      setPatientProfile(null);
+      setShowProfileForm(true);
     }
   };
 
@@ -340,6 +361,8 @@ export default function PatientDashboardPage() {
                 profile={patientProfile} 
                 defaultPatient={patient}
                 onEditProfile={() => setShowProfileForm(true)}
+                onDeleteProfile={handleDeleteProfile}
+                isDeleteLoading={isDeleteLoading}
               />
             </motion.div>
 
@@ -535,23 +558,27 @@ function ProfileMenu({ onLogout }: { onLogout: () => void }) {
 function ProfileSummary({ 
   profile, 
   defaultPatient,
-  onEditProfile
+  onEditProfile,
+  onDeleteProfile,
+  isDeleteLoading = false,
 }: { 
   profile: PatientProfileResponse | null; 
   defaultPatient: typeof patient;
   onEditProfile?: () => void;
+  onDeleteProfile?: () => void;
+  isDeleteLoading?: boolean;
 }) {
   const user = useAuthStore((state) => state.user);
   const displayName = user ? `${user.firstName} ${user.lastName}` : defaultPatient.name;
   const displayEmail = user?.email || defaultPatient.email;
 
   const details = [
-    { label: "Patient ID", value: profile?.id || defaultPatient.patientId, icon: ShieldCheck },
-    { label: "Email", value: displayEmail, icon: Mail },
-    { label: "Blood Group", value: profile?.bloodGroup || defaultPatient.bloodGroup, icon: HeartPulse },
-    { label: "Gender", value: profile?.gender ? profile.gender.charAt(0) + profile.gender.slice(1).toLowerCase() : defaultPatient.gender, icon: UserRound },
-    { label: "Date of Birth", value: profile?.dateOfBirth || defaultPatient.age, icon: Activity },
-    { label: "Emergency Contact", value: profile?.emergencyContactName || defaultPatient.emergencyContact, icon: Phone },
+    { label: "Patient ID", value: profile?.id || "--", icon: ShieldCheck },
+    { label: "Email", value: profile ? displayEmail : "--", icon: Mail },
+    { label: "Blood Group", value: profile?.bloodGroup || "--", icon: HeartPulse },
+    { label: "Gender", value: profile?.gender ? profile.gender.charAt(0) + profile.gender.slice(1).toLowerCase() : "--", icon: UserRound },
+    { label: "Date of Birth", value: profile?.dateOfBirth || "--", icon: Activity },
+    { label: "Emergency Contact", value: profile?.emergencyContactName || "--", icon: Phone },
   ];
 
   return (
@@ -585,19 +612,33 @@ function ProfileSummary({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{detail.label}</p>
-              <p className="mt-1 truncate text-sm font-bold text-slate-700 dark:text-slate-100">{detail.value || "Not provided"}</p>
+              <p className={cn("mt-1 truncate text-sm font-bold", detail.value === "--" ? "text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-100")}>
+                {detail.value}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
-      <Button 
-        onClick={onEditProfile}
-        className="mt-5 w-full shrink-0 rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
-      >
-        <Edit3 className="h-4 w-4" />
-        Edit Profile
-      </Button>
+      {profile && (
+        <div className="mt-5 flex gap-2.5 flex-col">
+          <Button 
+            onClick={onEditProfile}
+            className="w-full shrink-0 rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+          >
+            <Edit3 className="h-4 w-4" />
+            Edit Profile
+          </Button>
+          <Button 
+            onClick={onDeleteProfile}
+            disabled={isDeleteLoading}
+            className="w-full shrink-0 rounded-2xl bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            {isDeleteLoading ? "Deleting..." : "Delete Profile"}
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }
