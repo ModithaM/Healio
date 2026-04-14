@@ -19,18 +19,20 @@ import {
   FileText,
   HeartPulse,
   Home,
-  Hospital,
+  Loader2,
   LogOut,
   MailPlus,
   Moon,
   MoreHorizontal,
   NotebookPen,
   Pill,
+  Plus,
   Search,
   ShieldCheck,
   Stethoscope,
   Sun,
   Timer,
+  Trash2,
   UserRound,
   UsersRound,
   Video,
@@ -38,12 +40,20 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
+import {
+  getDoctorProfileByUserId,
+  deleteDoctorAvailability,
+  DoctorProfileResponse,
+  DoctorAvailabilityResponse,
+} from "@/service/doctorApi";
+import DoctorProfileForm from "@/components/DoctorProfileForm";
+import DoctorAvailabilityForm from "@/components/DoctorAvailabilityForm";
 
 type Icon = ComponentType<{ className?: string }>;
 
@@ -57,18 +67,6 @@ const fadeUp: Variants = {
 const stagger: Variants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } },
-};
-
-const doctor = {
-  name: "Dr. Kavish Silva",
-  specialty: "Consultant Cardiologist",
-  hospital: "Healio Central Hospital",
-  department: "Cardiology Department",
-  experience: "12 years",
-  license: "SLMC-DR-94218",
-  availability: "Available for consultations",
-  email: "kavish.silva@healio.care",
-  avatar: "/illustrations/testimonial-avatar-doctor.svg",
 };
 
 const stats = [
@@ -125,14 +123,6 @@ const appointments = [
   },
 ];
 
-const availability = [
-  { day: "Mon", slots: ["08:30 - 11:30", "14:00 - 17:00"], active: true },
-  { day: "Tue", slots: ["09:00 - 12:00", "Video: 16:00 - 18:00"], active: true },
-  { day: "Wed", slots: ["Surgery rounds", "15:00 - 17:30"], active: false },
-  { day: "Thu", slots: ["08:30 - 12:30", "14:30 - 16:30"], active: true },
-  { day: "Fri", slots: ["09:00 - 13:00", "Video: 15:00 - 17:00"], active: true },
-];
-
 const patients = [
   { name: "Hasindu Chanuka", date: "Apr 12, 2026", condition: "Cardiac follow-up", reports: 4 },
   { name: "Nadia Perera", date: "Apr 11, 2026", condition: "Hypertension review", reports: 2 },
@@ -152,9 +142,81 @@ const activities = [
   { title: "Report reviewed", detail: "Cardiac stress test file marked as reviewed", time: "2 hrs ago", icon: FileText },
 ];
 
+// day ordering helper
+const DAY_ORDER = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+const DAY_SHORT: Record<string, string> = {
+  MONDAY: "Mon", TUESDAY: "Tue", WEDNESDAY: "Wed",
+  THURSDAY: "Thu", FRIDAY: "Fri", SATURDAY: "Sat", SUNDAY: "Sun",
+};
+
+const formatTime = (t: string): string => {
+  if (!t) return "";
+  // Handle "HH:mm:ss" → "HH:mm", or array [h,m,s] → "HH:mm"
+  if (Array.isArray(t as any)) {
+    const arr = t as any as number[];
+    return `${String(arr[0]).padStart(2, "0")}:${String(arr[1]).padStart(2, "0")}`;
+  }
+  return String(t).slice(0, 5);
+};
+
+const getCurrentDayOfWeek = (): string => {
+  const days = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+  return days[new Date().getDay()];
+};
+
+//main page
 export default function DoctorDashboardPage() {
+  const user = useAuthStore((state) => state.user);
   const [isDark, setIsDark] = useState(false);
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
+
+  // Doctor service state
+  const [doctorProfile, setDoctorProfile] = useState<DoctorProfileResponse | null>(null);
+  const [availabilitySlots, setAvailabilitySlots] = useState<DoctorAvailabilityResponse[]>([]);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+
+  // modal state
+  const [profileModal, setProfileModal] = useState<"create" | "edit" | null>(null);
+  const [availabilityModal, setAvailabilityModal] = useState<"add" | "edit" | null>(null);
+  const [editingSlot, setEditingSlot] = useState<DoctorAvailabilityResponse | null>(null);
+
+  const loadDoctorData = useCallback(async () => {
+    if (!user?.userId) return;
+    setIsProfileLoading(true);
+    const result = await getDoctorProfileByUserId(user.userId);
+    if (result.success && result.data) {
+      setDoctorProfile(result.data);
+      setAvailabilitySlots(result.data.availabilitySlots || []);
+    } else if (result.error === "Doctor profile not found") {
+      setProfileModal("create");
+    }
+    setIsProfileLoading(false);
+  }, [user?.userId]);
+
+  useEffect(() => {
+    loadDoctorData();
+  }, [loadDoctorData]);
+
+  const handleProfileSuccess = () => {
+    setProfileModal(null);
+    loadDoctorData();
+  };
+
+  const handleAvailabilitySuccess = () => {
+    setAvailabilityModal(null);
+    setEditingSlot(null);
+    loadDoctorData();
+  };
+
+  const handleDeleteSlot = async (slotId: string) => {
+    if (!user?.userId) return;
+    await deleteDoctorAvailability(user.userId, slotId);
+    loadDoctorData();
+  };
+
+  const displayName = user?.firstName
+    ? `Dr. ${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
+    : "Doctor";
 
   return (
     <div className={cn(isDark && "dark")}>
@@ -171,13 +233,21 @@ export default function DoctorDashboardPage() {
         >
           <DashboardHeader
             isDark={isDark}
+            specialty={doctorProfile?.specialization}
             onCreateSession={() => setSessionModalOpen(true)}
-            onToggleDark={() => setIsDark((value) => !value)}
+            onToggleDark={() => setIsDark((v) => !v)}
           />
 
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12 [grid-auto-flow:dense]">
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-3 xl:row-span-2">
-              <DoctorProfileCard />
+              <DoctorProfileCard
+                profile={doctorProfile}
+                displayName={displayName}
+                userEmail={user?.email || ""}
+                isLoading={isProfileLoading}
+                onEdit={() => setProfileModal("edit")}
+                onCreateProfile={() => setProfileModal("create")}
+              />
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-9">
@@ -196,7 +266,16 @@ export default function DoctorDashboardPage() {
               <AppointmentManagement />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-4">
-              <AvailabilityManagement />
+              <AvailabilityManagement
+                slots={availabilitySlots}
+                isLoading={isProfileLoading}
+                onAddSlot={() => setAvailabilityModal("add")}
+                onEditSlot={(slot) => {
+                  setEditingSlot(slot);
+                  setAvailabilityModal("edit");
+                }}
+                onDeleteSlot={handleDeleteSlot}
+              />
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-5">
@@ -214,20 +293,56 @@ export default function DoctorDashboardPage() {
             </motion.div>
           </section>
         </motion.div>
+
         <AnimatePresence>
           {sessionModalOpen && <CreateSessionModal onClose={() => setSessionModalOpen(false)} />}
+          {profileModal && (
+            <DoctorProfileForm
+              key={profileModal}
+              userId={user?.userId || ""}
+              mode={profileModal}
+              initialData={
+                profileModal === "edit" && doctorProfile
+                  ? {
+                      specialization: doctorProfile.specialization,
+                      qualifications: doctorProfile.qualifications,
+                      experienceYears: doctorProfile.experienceYears,
+                      consultationFee: Number(doctorProfile.consultationFee),
+                    }
+                  : undefined
+              }
+              onSuccess={handleProfileSuccess}
+              onClose={() => setProfileModal(null)}
+            />
+          )}
+          {availabilityModal && (
+            <DoctorAvailabilityForm
+              key={availabilityModal + (editingSlot?.id || "")}
+              userId={user?.userId || ""}
+              mode={availabilityModal}
+              initialData={availabilityModal === "edit" && editingSlot ? editingSlot : undefined}
+              onSuccess={handleAvailabilitySuccess}
+              onClose={() => {
+                setAvailabilityModal(null);
+                setEditingSlot(null);
+              }}
+            />
+          )}
         </AnimatePresence>
       </main>
     </div>
   );
 }
 
+//Header
 function DashboardHeader({
   isDark,
+  specialty,
   onCreateSession,
   onToggleDark,
 }: {
   isDark: boolean;
+  specialty?: string;
   onCreateSession: () => void;
   onToggleDark: () => void;
 }) {
@@ -235,7 +350,7 @@ function DashboardHeader({
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-  const displayName = user?.firstName ? `Dr. ${user.firstName}` : "Dr. Silva";
+  const displayName = user?.firstName ? `Dr. ${user.firstName}` : "Doctor";
 
   const handleLogout = () => {
     logout();
@@ -253,7 +368,9 @@ function DashboardHeader({
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.26em] text-sky-600 dark:text-sky-300">Doctor Workspace</p>
               <h1 className="text-xl font-bold sm:text-2xl">Good morning, {displayName}</h1>
-              <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{doctor.specialty} · {doctor.department}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                {specialty || "Healio Medical Center"}
+              </p>
             </div>
           </div>
 
@@ -284,10 +401,12 @@ function DashboardHeader({
               </HeaderIconButton>
               <div className="relative">
                 <button
-                  onClick={() => setProfileOpen((value) => !value)}
+                  onClick={() => setProfileOpen((v) => !v)}
                   className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/80 px-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-lg dark:border-white/10 dark:bg-white/8"
                 >
-                  <Image src={doctor.avatar} alt={`${doctor.name} avatar`} width={34} height={34} className="rounded-xl" />
+                  <div className="grid h-[34px] w-[34px] place-items-center rounded-xl bg-gradient-to-br from-sky-500 to-emerald-500 text-white text-sm font-bold">
+                    {user?.firstName?.charAt(0) || "D"}
+                  </div>
                   <span className="hidden sm:block">
                     <span className="block text-sm font-bold">{displayName}</span>
                     <span className="block text-xs text-slate-500 dark:text-slate-400">Doctor</span>
@@ -349,7 +468,7 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
         exit={{ opacity: 0, y: 24, scale: 0.96 }}
         transition={{ duration: 0.24, ease }}
         className="w-full max-w-5xl"
-        onMouseDown={(event) => event.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         <SessionGenerationForm onCancel={onClose} />
       </motion.div>
@@ -357,14 +476,84 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function DoctorProfileCard() {
+// Doctor profile Card
+function DoctorProfileCard({
+  profile,
+  displayName,
+  userEmail,
+  isLoading,
+  onEdit,
+  onCreateProfile,
+}: {
+  profile: DoctorProfileResponse | null;
+  displayName: string;
+  userEmail: string;
+  isLoading: boolean;
+  onEdit: () => void;
+  onCreateProfile: () => void;
+}) {
+  const verificationColor =
+    profile?.verificationStatus === "VERIFIED"
+      ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+      : profile?.verificationStatus === "REJECTED"
+      ? "bg-rose-500/12 text-rose-700 dark:text-rose-300"
+      : "bg-amber-500/12 text-amber-700 dark:text-amber-300";
+
+  const verificationDot =
+    profile?.verificationStatus === "VERIFIED"
+      ? "bg-emerald-500"
+      : profile?.verificationStatus === "REJECTED"
+      ? "bg-rose-500"
+      : "bg-amber-500";
+
+  const verificationLabel =
+    profile?.verificationStatus === "VERIFIED"
+      ? "Verified doctor"
+      : profile?.verificationStatus === "REJECTED"
+      ? "Verification rejected"
+      : "Pending verification";
+
+  if (isLoading) {
+    return (
+      <Card className="h-full flex flex-col items-center justify-center rounded-[28px] p-5 gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-sky-500" />
+        <p className="text-sm font-semibold text-slate-500">Loading profile...</p>
+      </Card>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <Card className="h-full flex flex-col items-center justify-center rounded-[28px] p-5 gap-4 text-center">
+        <div className="grid h-16 w-16 place-items-center rounded-3xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
+          <Stethoscope className="h-8 w-8" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold">No Doctor Profile</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Complete your doctor profile to start accepting appointments and managing your schedule.
+          </p>
+        </div>
+        <Button
+          className="w-full rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500"
+          onClick={onCreateProfile}
+        >
+          <Plus className="h-4 w-4" />
+          Create Doctor Profile
+        </Button>
+      </Card>
+    );
+  }
+
   const details = [
-    { label: "Specialty", value: doctor.specialty, icon: HeartPulse },
-    { label: "Hospital", value: doctor.hospital, icon: Hospital },
-    { label: "Department", value: doctor.department, icon: UsersRound },
-    { label: "Experience", value: doctor.experience, icon: Activity },
-    { label: "License No.", value: doctor.license, icon: ShieldCheck },
-    { label: "Work Email", value: doctor.email, icon: MailPlus },
+    { label: "Specialty", value: profile.specialization, icon: HeartPulse },
+    { label: "License No.", value: profile.licenseNumber, icon: ShieldCheck },
+    { label: "Experience", value: `${profile.experienceYears} years`, icon: Activity },
+    { label: "Consult Fee", value: `LKR ${Number(profile.consultationFee).toLocaleString()}`, icon: UsersRound },
+    { label: "Work Email", value: profile.userInfo?.email || userEmail, icon: MailPlus },
+    ...(profile.qualifications
+      ? [{ label: "Qualifications", value: profile.qualifications, icon: FileText }]
+      : []),
   ];
 
   return (
@@ -373,24 +562,22 @@ function DoctorProfileCard() {
         <div className="flex items-center gap-4">
           <div className="relative">
             <div className="absolute inset-0 rounded-[30px] bg-gradient-to-br from-sky-500 to-emerald-500 blur-md" />
-            <Image
-              src={doctor.avatar}
-              alt={`${doctor.name} profile photo`}
-              width={96}
-              height={96}
-              className="relative rounded-[30px] border-4 border-white bg-sky-50 shadow-xl dark:border-slate-900"
-            />
+            <div className="relative grid h-24 w-24 place-items-center rounded-[30px] border-4 border-white bg-gradient-to-br from-sky-100 to-emerald-100 text-sky-600 shadow-xl dark:border-slate-900 dark:from-sky-500/20 dark:to-emerald-500/20 dark:text-sky-300">
+              <Stethoscope className="h-10 w-10" />
+            </div>
           </div>
           <div>
-            <h2 className="text-2xl font-bold">{doctor.name}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{doctor.specialty}</p>
-            <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-500/12 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              {doctor.availability}
+            <h2 className="text-2xl font-bold">{displayName}</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
+              {profile.specialization}
+            </p>
+            <span className={cn("mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold", verificationColor)}>
+              <span className={cn("h-2 w-2 rounded-full", verificationDot)} />
+              {verificationLabel}
             </span>
           </div>
         </div>
-        <Button size="icon" variant="outline" className="rounded-2xl">
+        <Button size="icon" variant="outline" className="rounded-2xl" onClick={onEdit}>
           <Edit3 className="h-4 w-4" />
         </Button>
       </div>
@@ -409,7 +596,7 @@ function DoctorProfileCard() {
         ))}
       </div>
 
-      <Button className="mt-5 w-full rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+      <Button className="mt-5 w-full rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200" onClick={onEdit}>
         <Edit3 className="h-4 w-4" />
         Edit Doctor Profile
       </Button>
@@ -417,6 +604,7 @@ function DoctorProfileCard() {
   );
 }
 
+//Stat Card
 function StatCard({ label, value, helper, icon: Icon, accent }: { label: string; value: string; helper: string; icon: Icon; accent: string }) {
   return (
     <Card className="group h-full flex flex-col rounded-[24px] p-4 transition duration-300 hover:-translate-y-1 hover:border-sky-300/70 hover:shadow-2xl hover:shadow-sky-500/10">
@@ -433,6 +621,7 @@ function StatCard({ label, value, helper, icon: Icon, accent }: { label: string;
   );
 }
 
+// quick Actions
 function QuickActions() {
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
@@ -455,6 +644,7 @@ function QuickActions() {
   );
 }
 
+//Appointment Management
 function AppointmentManagement() {
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
@@ -474,32 +664,32 @@ function AppointmentManagement() {
           <span>Status</span>
           <span className="text-right">Actions</span>
         </div>
-        {appointments.map((appointment) => (
-          <div key={`${appointment.patient}-${appointment.time}`} className="grid grid-cols-[1fr_0.9fr_0.55fr_0.55fr_1.1fr] items-center gap-4 border-b border-slate-200/70 px-5 py-4 last:border-b-0 dark:border-white/10">
+        {appointments.map((appt) => (
+          <div key={`${appt.patient}-${appt.time}`} className="grid grid-cols-[1fr_0.9fr_0.55fr_0.55fr_1.1fr] items-center gap-4 border-b border-slate-200/70 px-5 py-4 last:border-b-0 dark:border-white/10">
             <div>
-              <p className="font-bold">{appointment.patient}</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{appointment.priority}</p>
+              <p className="font-bold">{appt.patient}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{appt.priority}</p>
             </div>
-            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{appointment.type}</p>
-            <p className="text-sm font-bold">{appointment.time}</p>
-            <span className={cn("w-fit rounded-full px-3 py-1.5 text-xs font-bold", appointment.statusClass)}>{appointment.status}</span>
-            <AppointmentActions canJoin={appointment.canJoin} />
+            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{appt.type}</p>
+            <p className="text-sm font-bold">{appt.time}</p>
+            <span className={cn("w-fit rounded-full px-3 py-1.5 text-xs font-bold", appt.statusClass)}>{appt.status}</span>
+            <AppointmentActions canJoin={appt.canJoin} />
           </div>
         ))}
       </div>
 
       <div className="mt-5 grid gap-3.5 lg:hidden">
-        {appointments.map((appointment) => (
-          <div key={`${appointment.patient}-${appointment.time}`} className="rounded-[26px] border border-slate-200/70 bg-white/64 p-4 dark:border-white/10 dark:bg-white/[0.05]">
+        {appointments.map((appt) => (
+          <div key={`${appt.patient}-${appt.time}`} className="rounded-[26px] border border-slate-200/70 bg-white/64 p-4 dark:border-white/10 dark:bg-white/[0.05]">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-bold">{appointment.patient}</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{appointment.type} · {appointment.time}</p>
+                <p className="font-bold">{appt.patient}</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{appt.type} · {appt.time}</p>
               </div>
-              <span className={cn("rounded-full px-3 py-1.5 text-xs font-bold", appointment.statusClass)}>{appointment.status}</span>
+              <span className={cn("rounded-full px-3 py-1.5 text-xs font-bold", appt.statusClass)}>{appt.status}</span>
             </div>
-            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{appointment.priority}</p>
-            <AppointmentActions canJoin={appointment.canJoin} mobile />
+            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{appt.priority}</p>
+            <AppointmentActions canJoin={appt.canJoin} mobile />
           </div>
         ))}
       </div>
@@ -532,13 +722,39 @@ function AppointmentActions({ canJoin, mobile = false }: { canJoin: boolean; mob
   );
 }
 
-function AvailabilityManagement() {
+//availability management
+function AvailabilityManagement({
+  slots,
+  isLoading,
+  onAddSlot,
+  onEditSlot,
+  onDeleteSlot,
+}: {
+  slots: DoctorAvailabilityResponse[];
+  isLoading: boolean;
+  onAddSlot: () => void;
+  onEditSlot: (slot: DoctorAvailabilityResponse) => void;
+  onDeleteSlot: (slotId: string) => void;
+}) {
+  const today = getCurrentDayOfWeek();
+  const todaySlots = slots.filter((s) => s.dayOfWeek === today && s.isActive);
+  const isAvailableToday = todaySlots.length > 0;
+
+  // Group slots by day, preserving Mon–Sun order
+  const slotsByDay: Record<string, DoctorAvailabilityResponse[]> = {};
+  DAY_ORDER.forEach((day) => {
+    const daySlots = slots.filter((s) => s.dayOfWeek === day);
+    if (daySlots.length > 0) slotsByDay[day] = daySlots;
+  });
+
+  const displayDays = Object.entries(slotsByDay);
+
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <div className="flex items-start justify-between gap-4">
         <SectionTitle eyebrow="Availability" title="Weekly schedule" />
-        <Button size="icon" variant="outline" className="rounded-2xl">
-          <Edit3 className="h-4 w-4" />
+        <Button size="icon" variant="outline" className="rounded-2xl" onClick={onAddSlot}>
+          <Plus className="h-4 w-4" />
         </Button>
       </div>
 
@@ -546,8 +762,17 @@ function AvailabilityManagement() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-bold text-sky-100">Current status</p>
-            <h3 className="mt-2 text-2xl font-bold">Available today</h3>
-            <p className="mt-2 text-sm text-slate-300">Clinic: 08:30 AM - 12:30 PM</p>
+            <h3 className="mt-2 text-2xl font-bold">
+              {isLoading ? "Loading..." : isAvailableToday ? "Available today" : "Not available today"}
+            </h3>
+            {isAvailableToday && todaySlots[0] && (
+              <p className="mt-2 text-sm text-slate-300">
+                {formatTime(todaySlots[0].startTime)} – {formatTime(todaySlots[0].endTime)}
+              </p>
+            )}
+            {!isAvailableToday && !isLoading && slots.length === 0 && (
+              <p className="mt-2 text-sm text-slate-400">No availability slots set</p>
+            )}
           </div>
           <div className="grid h-16 w-16 place-items-center rounded-3xl bg-white/10 ring-1 ring-white/15">
             <Clock3 className="h-8 w-8 text-emerald-300" />
@@ -555,34 +780,74 @@ function AvailabilityManagement() {
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2.5">
-        {availability.map((day) => (
-          <div key={day.day} className="rounded-[22px] border border-slate-200/70 bg-white/62 p-3.5 dark:border-white/10 dark:bg-white/[0.05]">
-            <div className="flex items-center justify-between gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-500/10 text-sm font-bold text-sky-700 dark:text-sky-300">{day.day}</span>
-              <span className={cn("rounded-full px-3 py-1.5 text-xs font-bold", day.active ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300" : "bg-slate-500/10 text-slate-500 dark:text-slate-300")}>
-                {day.active ? "Open" : "Limited"}
-              </span>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {day.slots.map((slot) => (
-                <span key={slot} className="rounded-full bg-slate-950/5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
-                  {slot}
+      {isLoading ? (
+        <div className="mt-4 flex flex-1 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-sky-500" />
+        </div>
+      ) : displayDays.length === 0 ? (
+        <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-3 rounded-[22px] border border-dashed border-slate-200 p-6 text-center dark:border-white/10">
+          <CalendarCheck className="h-8 w-8 text-slate-400" />
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+            No availability slots yet
+          </p>
+          <Button className="rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500" onClick={onAddSlot}>
+            <Plus className="h-4 w-4" />
+            Add Slot
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-2.5 overflow-y-auto">
+          {displayDays.map(([day, daySlots]) => (
+            <div key={day} className="rounded-[22px] border border-slate-200/70 bg-white/62 p-3.5 dark:border-white/10 dark:bg-white/[0.05]">
+              <div className="flex items-center justify-between gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-500/10 text-sm font-bold text-sky-700 dark:text-sky-300">
+                  {DAY_SHORT[day] || day.slice(0, 3)}
                 </span>
-              ))}
+                <span className={cn("rounded-full px-3 py-1.5 text-xs font-bold", daySlots.some((s) => s.isActive) ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300" : "bg-slate-500/10 text-slate-500 dark:text-slate-300")}>
+                  {daySlots.some((s) => s.isActive) ? "Open" : "Inactive"}
+                </span>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {daySlots.map((slot) => (
+                  <div key={slot.id} className="flex items-center justify-between gap-2">
+                    <span className={cn("flex-1 rounded-full px-3 py-1.5 text-xs font-bold", slot.isActive ? "bg-slate-950/5 text-slate-600 dark:bg-white/10 dark:text-slate-300" : "bg-slate-100/60 text-slate-400 line-through dark:bg-white/5")}>
+                      {formatTime(slot.startTime)} – {formatTime(slot.endTime)}
+                    </span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onEditSlot(slot)}
+                        className="grid h-7 w-7 place-items-center rounded-xl border border-slate-200/70 bg-white/80 text-slate-500 transition hover:border-sky-300 hover:text-sky-600 dark:border-white/10 dark:bg-white/[0.05] dark:hover:text-sky-300"
+                        aria-label="Edit slot"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteSlot(slot.id)}
+                        className="grid h-7 w-7 place-items-center rounded-xl border border-slate-200/70 bg-white/80 text-slate-500 transition hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:bg-white/[0.05] dark:hover:text-rose-400"
+                        aria-label="Delete slot"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      <Button className="mt-5 w-full rounded-2xl">
-        <CalendarCheck className="h-4 w-4" />
-        Edit Schedule
+      <Button className="mt-5 w-full rounded-2xl" onClick={onAddSlot}>
+        <Plus className="h-4 w-4" />
+        Add Availability Slot
       </Button>
     </Card>
   );
 }
 
+//Patient Records review
 function PatientRecordsPreview() {
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
@@ -620,6 +885,7 @@ function PatientRecordsPreview() {
   );
 }
 
+//Telemedicine Sessions
 function TelemedicineSessions() {
   const [showSessionForm, setShowSessionForm] = useState(false);
 
@@ -628,7 +894,7 @@ function TelemedicineSessions() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <SectionTitle eyebrow="Telemedicine" title="Online consultation sessions" />
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="rounded-2xl" onClick={() => setShowSessionForm((value) => !value)}>
+          <Button variant="outline" className="rounded-2xl" onClick={() => setShowSessionForm((v) => !v)}>
             <CalendarClock className="h-4 w-4" />
             {showSessionForm ? "Hide Form" : "Create Session"}
           </Button>
@@ -726,10 +992,7 @@ function SessionGenerationForm({ onCancel }: { onCancel: () => void }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.22, ease }}
-      onSubmit={(event) => {
-        event.preventDefault();
-        onCancel();
-      }}
+      onSubmit={(e) => { e.preventDefault(); onCancel(); }}
       className="max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-[24px] border border-sky-200/80 bg-sky-50/75 p-4 shadow-sm dark:border-sky-300/20 dark:bg-sky-400/10 sm:p-5 xl:p-6"
     >
       <div className="flex items-start justify-between gap-4">
@@ -754,9 +1017,7 @@ function SessionGenerationForm({ onCancel }: { onCancel: () => void }) {
         <label className={labelClass}>
           <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Patient</span>
           <select className={fieldClass}>
-            {patients.map((patient) => (
-              <option key={patient.name}>{patient.name}</option>
-            ))}
+            {patients.map((p) => <option key={p.name}>{p.name}</option>)}
           </select>
         </label>
         <label className={labelClass}>
@@ -799,6 +1060,7 @@ function SessionGenerationForm({ onCancel }: { onCancel: () => void }) {
   );
 }
 
+//Productivity Shortcuts
 function ProductivityShortcuts() {
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
@@ -840,6 +1102,7 @@ function ShortcutCard({ icon: Icon, title, description, action }: { icon: Icon; 
   );
 }
 
+//Performance Activity
 function PerformanceActivity() {
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
@@ -873,10 +1136,7 @@ function PerformanceActivity() {
           <div className="mt-6 flex h-28 items-end gap-2">
             {[42, 68, 54, 82, 64, 92, 76].map((height, index) => (
               <div key={index} className="flex flex-1 items-end rounded-full bg-slate-950/5 p-1 dark:bg-white/10">
-                <div
-                  className="w-full rounded-full bg-gradient-to-t from-sky-600 to-emerald-400"
-                  style={{ height: `${height}%` }}
-                />
+                <div className="w-full rounded-full bg-gradient-to-t from-sky-600 to-emerald-400" style={{ height: `${height}%` }} />
               </div>
             ))}
           </div>
@@ -905,6 +1165,7 @@ function PerformanceActivity() {
   );
 }
 
+//Shared helpers
 function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div>
