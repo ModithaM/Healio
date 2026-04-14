@@ -12,12 +12,10 @@ import {
   ChevronDown,
   LogOut,
   UserRound,
-  Users,
   LayoutDashboard,
   GaugeCircle,
   Wrench,
   Activity,
-  PlusCircle,
   ListChecks
 } from "lucide-react";
 

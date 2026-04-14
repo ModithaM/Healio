@@ -1,6 +1,7 @@
 package com.healio.userservice.repository;
 
 import com.healio.userservice.enums.Active;
+import com.healio.userservice.enums.Role;
 import com.healio.userservice.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -14,5 +15,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByUsername(String username);
 
     List<User> findAllByActive(Active active);
+
+    List<User> findAllByRoleAndActive(Role role, Active active);
 
 }

@@ -1,8 +1,9 @@
 package com.healio.telemedicineservice.enums;
 
 public enum SessionStatus {
+    SCHEDULED,
     WAITING,
-    ACTIVE,
-    ENDED,
-    FAILED
+    ONGOING,
+    COMPLETED,
+    CANCELLED
 }

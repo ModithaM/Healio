@@ -21,13 +21,13 @@ public class GatewayConfig {
                         .filters(f -> f.filter(filter))
                         .uri("lb://user-service"))
 
-                .route("patient-service", r -> r.path("/v1/patient-service/**")
-                        .filters(f -> f.filter(filter))
-                        .uri("lb://patient-service"))
-
                 .route("doctor-service", r -> r.path("/v1/doctor-service/**")
                         .filters(f -> f.filter(filter))
                         .uri("lb://doctor-service"))
+
+                .route("patient-service", r -> r.path("/v1/patient-service/**")
+                        .filters(f -> f.filter(filter))
+                        .uri("lb://patient-service"))
 
                 .route("appointment-service", r -> r.path("/v1/appointment-service/**")
                         .filters(f -> f.filter(filter))
