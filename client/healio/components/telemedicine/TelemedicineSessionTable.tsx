@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Pencil, Trash2, Video } from "lucide-react";
+import { Loader2, Pencil, Trash2, Video, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ type TelemedicineSessionTableProps = {
   onJoin: (session: TelemedicineSession) => void;
   onEdit?: (session: TelemedicineSession) => void;
   onDelete?: (session: TelemedicineSession) => void;
+  onCancel?: (session: TelemedicineSession) => void;
 };
 
 export function TelemedicineSessionTable({
@@ -25,6 +26,7 @@ export function TelemedicineSessionTable({
   onJoin,
   onEdit,
   onDelete,
+  onCancel,
 }: TelemedicineSessionTableProps) {
   const patientNameById = new Map(patients.map((patient) => [patient.id, patient.fullName]));
   const partyLabel = viewer === "doctor" ? "Patient" : "Doctor";
@@ -97,6 +99,18 @@ export function TelemedicineSessionTable({
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
+              {viewer === "doctor" && onCancel && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-2xl text-amber-600 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-500/10"
+                  disabled={session.status === "COMPLETED" || session.status === "CANCELLED"}
+                  onClick={() => onCancel(session)}
+                  aria-label={`Cancel ${session.sessionTitle}`}
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              )}
               {viewer === "doctor" && onDelete && (
                 <Button
                   variant="outline"
@@ -152,6 +166,17 @@ export function TelemedicineSessionTable({
                 >
                   <Pencil className="h-4 w-4" />
                   Edit
+                </Button>
+              )}
+              {viewer === "doctor" && onCancel && (
+                <Button
+                  variant="outline"
+                  className="rounded-2xl text-amber-600 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-500/10"
+                  disabled={session.status === "COMPLETED" || session.status === "CANCELLED"}
+                  onClick={() => onCancel(session)}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cancel
                 </Button>
               )}
               {viewer === "doctor" && onDelete && (

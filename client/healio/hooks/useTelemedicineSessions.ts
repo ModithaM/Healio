@@ -25,11 +25,6 @@ export function useTelemedicineSessions({
   const [error, setError] = useState<string | null>(null);
 
   const refetch = useCallback(async () => {
-    if (!doctorId && !patientId) {
-      setSessions([]);
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 

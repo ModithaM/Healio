@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Activity,
+  BarChart3,
   Bell,
   CalendarCheck,
   CalendarClock,
@@ -47,17 +48,18 @@ import { usePatients } from "@/hooks/usePatients";
 import { useTelemedicineSessions } from "@/hooks/useTelemedicineSessions";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
-<<<<<<< HEAD
 import DoctorAvailabilityForm from "@/components/DoctorAvailabilityForm";
 import DoctorProfileForm from "@/components/DoctorProfileForm";
 import {
   deleteDoctorAvailability,
   getDoctorProfileByUserId,
 } from "@/service/doctorApi";
-import { getTelemedicineJoinDetails, startTelemedicineSession } from "@/service/telemedicine";
-=======
-import { deleteTelemedicineSession, getTelemedicineJoinDetails, startTelemedicineSession } from "@/service/telemedicine";
->>>>>>> e752836 (Implement  update and delete telemedicine sessions)
+import {
+  cancelTelemedicineSession,
+  deleteTelemedicineSession,
+  getTelemedicineJoinDetails,
+  startTelemedicineSession,
+} from "@/service/telemedicine";
 import { useAuthStore } from "@/store/authStore";
 import type { DoctorAvailabilityResponse, DoctorProfileResponse } from "@/service/doctorApi";
 import type { MeetingJoinDetails, TelemedicineSession } from "@/types/telemedicine/types";
@@ -98,7 +100,6 @@ const patients = [
   { name: "Maya Chen", date: "Apr 08, 2026", condition: "General cardiac screening", reports: 3 },
 ];
 
-<<<<<<< HEAD
 const activities = [
   { title: "Completed ECG review", detail: "Hasindu Chanuka consultation notes saved", time: "8 min ago", icon: CheckCircle2 },
   { title: "Prescription issued", detail: "Atorvastatin 10mg plan sent to patient portal", time: "24 min ago", icon: Pill },
@@ -128,8 +129,6 @@ const getCurrentDayOfWeek = (): string => {
 };
 
 //main page
-=======
->>>>>>> e752836 (Implement  update and delete telemedicine sessions)
 export default function DoctorDashboardPage() {
   const user = useAuthStore((state) => state.user);
   const [isDark, setIsDark] = useState(false);
@@ -172,7 +171,6 @@ export default function DoctorDashboardPage() {
     }
   };
 
-<<<<<<< HEAD
   // Doctor service state
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfileResponse | null>(null);
   const [availabilitySlots, setAvailabilitySlots] = useState<DoctorAvailabilityResponse[]>([]);
@@ -252,7 +250,6 @@ export default function DoctorDashboardPage() {
     ? `Dr. ${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
     : "Doctor";
 
-=======
   const handleEditSession = (session: TelemedicineSession) => {
     setEditingSession(session);
     setSessionModalOpen(true);
@@ -272,7 +269,20 @@ export default function DoctorDashboardPage() {
     }
   };
 
->>>>>>> e752836 (Implement  update and delete telemedicine sessions)
+  const handleCancelSession = async (session: TelemedicineSession) => {
+    if (!window.confirm(`Cancel telemedicine session "${session.sessionTitle}"?`)) {
+      return;
+    }
+
+    try {
+      await cancelTelemedicineSession(session.id);
+      ToastUtils.success("Telemedicine session cancelled.");
+      void refetchTelemedicineSessions();
+    } catch (error) {
+      ToastUtils.error(getApiErrorMessage(error, "Unable to cancel telemedicine session."));
+    }
+  };
+
   return (
     <div className={cn(isDark && "dark")}>
       <main className="min-h-screen overflow-hidden bg-[#f4f9fc] text-slate-950 transition-colors duration-500 dark:bg-[#020817] dark:text-white [&_a]:cursor-pointer [&_button]:cursor-pointer">
@@ -288,14 +298,9 @@ export default function DoctorDashboardPage() {
         >
           <DashboardHeader
             isDark={isDark}
-<<<<<<< HEAD
             specialty={doctorProfile?.specialization}
-            onCreateSession={() => setSessionModalOpen(true)}
-            onToggleDark={() => setIsDark((v) => !v)}
-=======
             onCreateSession={handleOpenCreateSession}
-            onToggleDark={() => setIsDark((value) => !value)}
->>>>>>> e752836 (Implement  update and delete telemedicine sessions)
+            onToggleDark={() => setIsDark((v) => !v)}
           />
 
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12 [grid-auto-flow:dense]">
@@ -330,6 +335,7 @@ export default function DoctorDashboardPage() {
                 onJoinSession={handleJoinSession}
                 onEditSession={handleEditSession}
                 onDeleteSession={handleDeleteSession}
+                onCancelSession={handleCancelSession}
               />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-4">
@@ -356,6 +362,13 @@ export default function DoctorDashboardPage() {
                 onJoinSession={handleJoinSession}
                 onCreateSession={handleOpenCreateSession}
               />
+            </motion.div>
+
+            <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-4">
+              <ProductivityShortcuts />
+            </motion.div>
+            <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-8">
+              <PerformanceActivity />
             </motion.div>
           </section>
         </motion.div>
@@ -710,6 +723,7 @@ function TelemedicineQueueTable({
   onJoinSession,
   onEditSession,
   onDeleteSession,
+  onCancelSession,
 }: {
   telemedicineSessions: TelemedicineSession[];
   sessionsLoading: boolean;
@@ -717,6 +731,7 @@ function TelemedicineQueueTable({
   onJoinSession: (session: TelemedicineSession) => void;
   onEditSession: (session: TelemedicineSession) => void;
   onDeleteSession: (session: TelemedicineSession) => void;
+  onCancelSession: (session: TelemedicineSession) => void;
 }) {
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
@@ -736,6 +751,7 @@ function TelemedicineQueueTable({
         onJoin={onJoinSession}
         onEdit={onEditSession}
         onDelete={onDeleteSession}
+        onCancel={onCancelSession}
       />
     </Card>
   );
@@ -1011,7 +1027,6 @@ function TelemedicineSessions({
   );
 }
 
-<<<<<<< HEAD
 //Productivity Shortcuts
 function ProductivityShortcuts() {
   return (
@@ -1118,8 +1133,6 @@ function PerformanceActivity() {
 }
 
 //Shared helpers
-=======
->>>>>>> e752836 (Implement  update and delete telemedicine sessions)
 function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div>
