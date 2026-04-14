@@ -58,6 +58,15 @@ public class DoctorService {
         return enrichDoctorResponse(doctor);
     }
 
+    public DoctorProfileResponseDto updateDoctorProfile(String userId, DoctorProfileUpdateRequest request) {
+        DoctorProfile doctor = doctorRepository.findByUserId(userId)
+                .orElseThrow(() -> new NotFoundException("Doctor profile not found for userId: " + userId));
+
+        modelMapper.map(request, doctor);
+        DoctorProfile updatedDoctor = doctorRepository.save(doctor);
+        return enrichDoctorResponse(updatedDoctor);
+    }
+
     //private Helpers
     private DoctorProfileResponseDto enrichDoctorResponse(DoctorProfile doctor) {
         DoctorProfileResponseDto dto = modelMapper.map(doctor, DoctorProfileResponseDto.class);
