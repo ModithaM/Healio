@@ -47,6 +47,17 @@ import { getTelemedicineJoinDetails, startTelemedicineSession } from "@/service/
 import { useAuthStore } from "@/store/authStore";
 import PatientProfileForm from "@/components/PatientProfileForm";
 import { getPatientProfileByUserId, PatientProfileResponse } from "@/service/patientApi";
+import { getAllDoctors } from "@/service/doctorApi";
+import {
+  AppointmentResponse,
+  CreateAppointmentPayload,
+  PrescriptionResponse,
+  cancelAppointment,
+  createAppointment,
+  getAppointmentsByPatientId,
+  getPrescriptionsByPatientId,
+  updateAppointment,
+} from "@/service/appointmentApi";
 import type { MeetingJoinDetails, TelemedicineSession } from "@/types/telemedicine/types";
 import ToastUtils from "@/utils/toastUtils";
 
@@ -76,13 +87,6 @@ const patient = {
   avatar: "/illustrations/testimonial-avatar-patient.svg",
 };
 
-const stats = [
-  { label: "Upcoming Appointments", value: "03", icon: CalendarClock, accent: "from-sky-500 to-cyan-400", helper: "Next one today" },
-  { label: "Completed Consultations", value: "18", icon: Stethoscope, accent: "from-emerald-500 to-teal-400", helper: "+4 this month" },
-  { label: "Uploaded Medical Reports", value: "12", icon: FileText, accent: "from-blue-500 to-indigo-400", helper: "2 new uploads" },
-  { label: "Active Prescriptions", value: "04", icon: Pill, accent: "from-lime-500 to-emerald-400", helper: "Refill reminders on" },
-];
-
 const actions = [
   { label: "Book Appointment", icon: Plus, description: "Find a doctor and reserve a slot" },
   { label: "Join Telemedicine Session", icon: Video, description: "Enter your secure video room" },
@@ -91,53 +95,10 @@ const actions = [
   { label: "Update Profile", icon: Edit3, description: "Keep health details current" },
 ];
 
-const appointments = [
-  {
-    doctor: "Dr. Amelia Fernando",
-    specialty: "Cardiology",
-    date: "Today, Apr 12",
-    time: "4:30 PM",
-    status: "Telemedicine",
-    tone: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
-    canJoin: true,
-  },
-  {
-    doctor: "Dr. Kavish Silva",
-    specialty: "Dermatology",
-    date: "Apr 15, 2026",
-    time: "10:00 AM",
-    status: "Confirmed",
-    tone: "bg-sky-500/12 text-sky-700 dark:text-sky-300",
-    canJoin: false,
-  },
-  {
-    doctor: "Dr. Maya Chen",
-    specialty: "General Medicine",
-    date: "Apr 20, 2026",
-    time: "8:45 AM",
-    status: "Clinic visit",
-    tone: "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300",
-    canJoin: false,
-  },
-];
-
 const reports = [
   { name: "Full Blood Count Report", date: "Apr 10, 2026", type: "PDF", size: "1.8 MB" },
   { name: "Cardiac Stress Test Results", date: "Mar 28, 2026", type: "PDF", size: "3.4 MB" },
   { name: "Chest X-Ray Scan", date: "Mar 12, 2026", type: "PNG", size: "5.1 MB" },
-];
-
-const prescriptions = [
-  {
-    doctor: "Dr. Amelia Fernando",
-    date: "Apr 08, 2026",
-    summary: "Atorvastatin 10mg, Omega-3 supplement, 14-day follow-up",
-  },
-  {
-    doctor: "Dr. Kavish Silva",
-    date: "Mar 24, 2026",
-    summary: "Cetirizine 10mg, topical recovery cream, hydration plan",
-  },
 ];
 
 const activities = [
@@ -153,6 +114,12 @@ export default function PatientDashboardPage() {
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [meetingDetails, setMeetingDetails] = useState<MeetingJoinDetails | null>(null);
+  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [prescriptions, setPrescriptions] = useState<PrescriptionResponse[]>([]);
+  const [selectedPrescription, setSelectedPrescription] = useState<PrescriptionResponse | null>(null);
+  const [doctorOptions, setDoctorOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isAppointmentsLoading, setIsAppointmentsLoading] = useState(false);
   const user = useAuthStore((state) => state.user);
   const patientId = user?.userId ?? patient.patientId;
   const {
@@ -185,6 +152,54 @@ export default function PatientDashboardPage() {
     loadPatientProfile();
   }, [user?.userId]);
 
+  const loadAppointmentData = async () => {
+    if (!user?.userId) return;
+
+    setIsAppointmentsLoading(true);
+
+    const [appointmentsResult, prescriptionsResult] = await Promise.all([
+      getAppointmentsByPatientId(user.userId),
+      getPrescriptionsByPatientId(user.userId),
+    ]);
+
+    if (appointmentsResult.success) {
+      setAppointments(appointmentsResult.data ?? []);
+    } else if (appointmentsResult.error) {
+      ToastUtils.error(appointmentsResult.error);
+    }
+
+    if (prescriptionsResult.success) {
+      setPrescriptions(prescriptionsResult.data ?? []);
+    } else if (prescriptionsResult.error) {
+      ToastUtils.error(prescriptionsResult.error);
+    }
+
+    setIsAppointmentsLoading(false);
+  };
+
+  useEffect(() => {
+    if (!user?.userId) return;
+
+    void loadAppointmentData();
+  }, [user?.userId]);
+
+  useEffect(() => {
+    const loadDoctors = async () => {
+      const result = await getAllDoctors();
+      if (!result.success || !result.data) return;
+
+      const normalized = result.data.map((doctor) => ({
+        id: doctor.userId,
+        name: doctor.userInfo?.username
+          ? `Dr. ${doctor.userInfo.username}`
+          : `Dr. ${doctor.specialization}`,
+      }));
+      setDoctorOptions(normalized);
+    };
+
+    void loadDoctors();
+  }, []);
+
   const handleProfileCreated = () => {
     setShowProfileForm(false);
     if (user?.userId) {
@@ -208,6 +223,75 @@ export default function PatientDashboardPage() {
       ToastUtils.error(getApiErrorMessage(error, "Unable to open telemedicine session."));
     }
   };
+
+  const handleBookAppointment = async (payload: CreateAppointmentPayload) => {
+    const result = await createAppointment(payload);
+    if (result.success) {
+      setIsBookingModalOpen(false);
+      await loadAppointmentData();
+    }
+  };
+
+  const handleCancelAppointment = async (appointmentId: string) => {
+    const reason = window.prompt("Reason for cancellation (optional):") || undefined;
+    const result = await cancelAppointment(appointmentId, reason);
+    if (result.success) {
+      await loadAppointmentData();
+    }
+  };
+
+  const handleRescheduleAppointment = async (appointment: AppointmentResponse) => {
+    const date = window.prompt("New date (YYYY-MM-DD):", appointment.appointmentDate);
+    const time = window.prompt("New time (HH:mm:ss):", appointment.appointmentTime);
+
+    if (!date || !time) return;
+
+    const result = await updateAppointment(appointment.id, {
+      appointmentDate: date,
+      appointmentTime: time,
+    });
+
+    if (result.success) {
+      await loadAppointmentData();
+    }
+  };
+
+  const dashboardStats = useMemo(() => {
+    const upcoming = appointments.filter((item) => ["PENDING", "CONFIRMED"].includes(item.status)).length;
+    const completed = appointments.filter((item) => item.status === "COMPLETED").length;
+    const activePrescriptions = prescriptions.length;
+
+    return [
+      {
+        label: "Upcoming Appointments",
+        value: String(upcoming).padStart(2, "0"),
+        icon: CalendarClock,
+        accent: "from-sky-500 to-cyan-400",
+        helper: "Scheduled visits",
+      },
+      {
+        label: "Completed Consultations",
+        value: String(completed).padStart(2, "0"),
+        icon: Stethoscope,
+        accent: "from-emerald-500 to-teal-400",
+        helper: "Care history",
+      },
+      {
+        label: "Uploaded Medical Reports",
+        value: String(reports.length).padStart(2, "0"),
+        icon: FileText,
+        accent: "from-blue-500 to-indigo-400",
+        helper: "Stored reports",
+      },
+      {
+        label: "Active Prescriptions",
+        value: String(activePrescriptions).padStart(2, "0"),
+        icon: Pill,
+        accent: "from-lime-500 to-emerald-400",
+        helper: "Medication plans",
+      },
+    ];
+  }, [appointments, prescriptions]);
 
   if (isLoadingProfile) {
     return (
@@ -234,7 +318,11 @@ export default function PatientDashboardPage() {
           animate="show"
           className="relative mx-auto flex w-full max-w-[1500px] flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8"
         >
-          <DashboardHeader isDark={isDark} onToggleDark={() => setIsDark((value) => !value)} />
+          <DashboardHeader
+            isDark={isDark}
+            onToggleDark={() => setIsDark((value) => !value)}
+            onBookAppointment={() => setIsBookingModalOpen(true)}
+          />
 
           {showProfileForm && user && (
             <PatientProfileForm
@@ -257,21 +345,32 @@ export default function PatientDashboardPage() {
 
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-9">
               <div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {stats.map((stat) => (
+                {dashboardStats.map((stat) => (
                   <StatCard key={stat.label} {...stat} />
                 ))}
               </div>
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-9">
-              <QuickActions onEditProfile={() => setShowProfileForm(true)} />
+              <QuickActions
+                onEditProfile={() => setShowProfileForm(true)}
+                onBookAppointment={() => setIsBookingModalOpen(true)}
+                onViewPrescriptions={() => {
+                  document.getElementById("patient-prescriptions")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              />
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-8">
               <AppointmentsSection
+                appointments={appointments}
+                isLoading={isAppointmentsLoading}
                 telemedicineSessions={telemedicineSessions}
                 sessionsLoading={sessionsLoading}
+                onBookAppointment={() => setIsBookingModalOpen(true)}
                 onJoinSession={handleJoinSession}
+                onCancelAppointment={handleCancelAppointment}
+                onRescheduleAppointment={handleRescheduleAppointment}
               />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-4">
@@ -279,7 +378,11 @@ export default function PatientDashboardPage() {
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-5">
-              <PrescriptionSection />
+              <PrescriptionSection
+                prescriptions={prescriptions}
+                isLoading={isAppointmentsLoading}
+                onViewDetails={(prescription) => setSelectedPrescription(prescription)}
+              />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-7">
               <ActivityTimeline />
@@ -297,12 +400,34 @@ export default function PatientDashboardPage() {
             }}
           />
         )}
+        {isBookingModalOpen && (
+          <BookingModal
+            doctors={doctorOptions}
+            patientId={user?.userId ?? ""}
+            onClose={() => setIsBookingModalOpen(false)}
+            onSubmit={handleBookAppointment}
+          />
+        )}
+        {selectedPrescription && (
+          <PrescriptionDetailsModal
+            prescription={selectedPrescription}
+            onClose={() => setSelectedPrescription(null)}
+          />
+        )}
       </main>
     </div>
   );
 }
 
-function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDark: () => void }) {
+function DashboardHeader({
+  isDark,
+  onToggleDark,
+  onBookAppointment,
+}: {
+  isDark: boolean;
+  onToggleDark: () => void;
+  onBookAppointment: () => void;
+}) {
   const [profileOpen, setProfileOpen] = useState(false);
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -342,7 +467,10 @@ function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDa
                 <Home className="h-4 w-4" />
                 Home
               </Link>
-              <Button className="hidden h-12 rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500 px-4 shadow-lg shadow-sky-500/20 hover:from-sky-400 hover:to-emerald-400 sm:inline-flex">
+              <Button
+                className="hidden h-12 rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500 px-4 shadow-lg shadow-sky-500/20 hover:from-sky-400 hover:to-emerald-400 sm:inline-flex"
+                onClick={onBookAppointment}
+              >
                 <CalendarClock className="h-4 w-4" />
                 Book Appointment
               </Button>
@@ -368,7 +496,10 @@ function DashboardHeader({ isDark, onToggleDark }: { isDark: boolean; onToggleDa
                 <AnimatePresence>{profileOpen && <ProfileMenu onLogout={handleLogout} />}</AnimatePresence>
               </div>
             </div>
-            <Button className="h-12 w-full rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500 shadow-lg shadow-sky-500/20 hover:from-sky-400 hover:to-emerald-400 sm:hidden">
+            <Button
+              className="h-12 w-full rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500 shadow-lg shadow-sky-500/20 hover:from-sky-400 hover:to-emerald-400 sm:hidden"
+              onClick={onBookAppointment}
+            >
               <CalendarClock className="h-4 w-4" />
               Book Appointment
             </Button>
@@ -490,10 +621,24 @@ function StatCard({ label, value, icon: Icon, accent, helper }: { label: string;
   );
 }
 
-function QuickActions({ onEditProfile }: { onEditProfile?: () => void }) {
+function QuickActions({
+  onEditProfile,
+  onBookAppointment,
+  onViewPrescriptions,
+}: {
+  onEditProfile?: () => void;
+  onBookAppointment?: () => void;
+  onViewPrescriptions?: () => void;
+}) {
   const handleActionClick = (label: string) => {
     if (label === "Update Profile" && onEditProfile) {
       onEditProfile();
+    }
+    if (label === "Book Appointment" && onBookAppointment) {
+      onBookAppointment();
+    }
+    if (label === "View Prescriptions" && onViewPrescriptions) {
+      onViewPrescriptions();
     }
   };
 
@@ -538,13 +683,23 @@ function QuickActions({ onEditProfile }: { onEditProfile?: () => void }) {
 }
 
 function AppointmentsSection({
+  appointments,
+  isLoading,
   telemedicineSessions,
   sessionsLoading,
+  onBookAppointment,
   onJoinSession,
+  onCancelAppointment,
+  onRescheduleAppointment,
 }: {
+  appointments: AppointmentResponse[];
+  isLoading: boolean;
   telemedicineSessions: TelemedicineSession[];
   sessionsLoading: boolean;
+  onBookAppointment: () => void;
   onJoinSession: (session: TelemedicineSession) => void;
+  onCancelAppointment: (appointmentId: string) => void;
+  onRescheduleAppointment: (appointment: AppointmentResponse) => void;
 }) {
   const sortedTelemedicineSessions = useMemo(() => {
     const statusPriority: Record<TelemedicineSession["status"], number> = {
@@ -570,15 +725,25 @@ function AppointmentsSection({
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <SectionTitle eyebrow="Upcoming appointments" title="Your next care visits" />
-        <Button variant="outline" className="rounded-2xl">
+        <Button variant="outline" className="rounded-2xl" onClick={onBookAppointment}>
           <Plus className="h-4 w-4" />
           New Booking
         </Button>
       </div>
       <div className="mt-5 grid gap-3.5">
+        {isLoading && (
+          <div className="rounded-[22px] border border-slate-200/70 bg-white/62 p-4 text-sm font-semibold text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
+            Loading appointments...
+          </div>
+        )}
+        {!isLoading && appointments.length === 0 && (
+          <div className="rounded-[22px] border border-dashed border-sky-300 bg-sky-50/70 p-4 text-sm font-semibold text-slate-500 dark:border-sky-300/30 dark:bg-sky-400/10 dark:text-slate-300">
+            No appointments yet. Use New Booking to schedule your first appointment.
+          </div>
+        )}
         {appointments.map((appointment) => (
           <div
-            key={`${appointment.doctor}-${appointment.date}`}
+            key={appointment.id}
             className="grid gap-4 rounded-[26px] border border-slate-200/70 bg-white/64 p-4 transition duration-300 hover:-translate-y-1 hover:border-sky-300/70 hover:shadow-xl hover:shadow-sky-500/10 dark:border-white/10 dark:bg-white/[0.05] lg:grid-cols-[1.1fr_0.8fr_auto]"
           >
             <div className="flex items-center gap-4">
@@ -586,28 +751,40 @@ function AppointmentsSection({
                 <Stethoscope className="h-7 w-7" />
               </div>
               <div>
-                <h3 className="font-bold">{appointment.doctor}</h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{appointment.specialty}</p>
+                <h3 className="font-bold">
+                  {appointment.doctor?.userInfo?.firstName || "Doctor"} {appointment.doctor?.userInfo?.lastName || ""}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{appointment.doctor?.specialization || "General"}</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <span className="inline-flex items-center gap-2 rounded-2xl bg-slate-950/5 px-3 py-2 text-sm font-bold dark:bg-white/10">
                 <Clock3 className="h-4 w-4 text-sky-500" />
-                {appointment.date} · {appointment.time}
+                {appointment.appointmentDate} · {appointment.appointmentTime}
               </span>
-              <span className={cn("rounded-2xl px-3 py-2 text-sm font-bold", appointment.tone)}>{appointment.status}</span>
+              <span className={cn(
+                "rounded-2xl px-3 py-2 text-sm font-bold",
+                appointment.status === "CANCELLED"
+                  ? "bg-rose-500/12 text-rose-700 dark:text-rose-300"
+                  : appointment.status === "CONFIRMED"
+                    ? "bg-sky-500/12 text-sky-700 dark:text-sky-300"
+                    : appointment.status === "COMPLETED"
+                      ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+                      : "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300",
+              )}>
+                {appointment.status}
+              </span>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              {appointment.canJoin && (
-                <Button className="rounded-2xl bg-emerald-500 hover:bg-emerald-400">
-                  <Video className="h-4 w-4" />
-                  Join
-                </Button>
-              )}
-              <Button variant="outline" className="rounded-2xl">
+              <Button variant="outline" className="rounded-2xl" onClick={() => onRescheduleAppointment(appointment)}>
                 Reschedule
               </Button>
-              <Button variant="ghost" size="icon" className="rounded-2xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onCancelAppointment(appointment.id)}
+                className="rounded-2xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+              >
                 <XCircle className="h-5 w-5" />
               </Button>
             </div>
@@ -669,32 +846,186 @@ function ReportsSection() {
   );
 }
 
-function PrescriptionSection() {
+function PrescriptionSection({
+  prescriptions,
+  isLoading,
+  onViewDetails,
+}: {
+  prescriptions: PrescriptionResponse[];
+  isLoading: boolean;
+  onViewDetails: (prescription: PrescriptionResponse) => void;
+}) {
   return (
-    <Card className="h-full flex flex-col rounded-[28px] p-5">
+    <Card id="patient-prescriptions" className="h-full flex flex-col rounded-[28px] p-5">
       <SectionTitle eyebrow="Prescriptions" title="Recent medication plans" />
       <div className="mt-5 grid gap-3.5">
+        {isLoading && (
+          <div className="rounded-[22px] border border-slate-200/70 bg-white/62 p-4 text-sm font-semibold text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
+            Loading prescriptions...
+          </div>
+        )}
+        {!isLoading && prescriptions.length === 0 && (
+          <div className="rounded-[22px] border border-dashed border-sky-300 bg-sky-50/70 p-4 text-sm font-semibold text-slate-500 dark:border-sky-300/30 dark:bg-sky-400/10 dark:text-slate-300">
+            No prescriptions available yet.
+          </div>
+        )}
         {prescriptions.map((prescription) => (
-          <div key={`${prescription.doctor}-${prescription.date}`} className="rounded-[26px] border border-slate-200/70 bg-white/62 p-5 dark:border-white/10 dark:bg-white/[0.05]">
+          <div key={prescription.id} className="rounded-[26px] border border-slate-200/70 bg-white/62 p-5 dark:border-white/10 dark:bg-white/[0.05]">
             <div className="flex items-start justify-between gap-4">
               <div className="flex gap-4">
                 <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-300">
                   <Pill className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold">{prescription.doctor}</h3>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{prescription.date}</p>
+                  <h3 className="font-bold">Doctor ID: {prescription.doctorId}</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{prescription.issuedDate}</p>
                 </div>
               </div>
-              <Button variant="outline" className="rounded-2xl">
+              <Button variant="outline" className="rounded-2xl" onClick={() => onViewDetails(prescription)}>
                 View Details
               </Button>
             </div>
-            <p className="mt-4 rounded-2xl bg-emerald-50/80 p-4 text-sm leading-6 text-slate-600 dark:bg-emerald-400/10 dark:text-slate-300">{prescription.summary}</p>
+            <p className="mt-4 rounded-2xl bg-emerald-50/80 p-4 text-sm leading-6 text-slate-600 dark:bg-emerald-400/10 dark:text-slate-300">
+              {prescription.diagnosis}
+              {prescription.notes ? ` - ${prescription.notes}` : ""}
+            </p>
           </div>
         ))}
       </div>
     </Card>
+  );
+}
+
+function PrescriptionDetailsModal({
+  prescription,
+  onClose,
+}: {
+  prescription: PrescriptionResponse;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
+      <div className="w-full max-w-2xl rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-xl font-bold">Prescription Details</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Issued: {prescription.issuedDate}</p>
+          </div>
+          <Button variant="outline" className="rounded-2xl" onClick={onClose}>Close</Button>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Diagnosis</p>
+          <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">{prescription.diagnosis}</p>
+          {prescription.notes && (
+            <>
+              <p className="mt-4 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Notes</p>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{prescription.notes}</p>
+            </>
+          )}
+        </div>
+
+        <div className="mt-4">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Medicines</p>
+          <div className="mt-2 grid gap-3">
+            {prescription.items.map((item) => (
+              <div key={item.id} className="rounded-2xl border border-slate-200/70 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <p className="font-bold">{item.medicineName}</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{item.dosage} · {item.frequency}</p>
+                {(item.duration || item.instructions) && (
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                    {item.duration ? `Duration: ${item.duration}. ` : ""}
+                    {item.instructions ? `Instructions: ${item.instructions}` : ""}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BookingModal({
+  doctors,
+  patientId,
+  onClose,
+  onSubmit,
+}: {
+  doctors: Array<{ id: string; name: string }>;
+  patientId: string;
+  onClose: () => void;
+  onSubmit: (payload: CreateAppointmentPayload) => Promise<void>;
+}) {
+  const [doctorId, setDoctorId] = useState("");
+  const [appointmentDate, setAppointmentDate] = useState("");
+  const [appointmentTime, setAppointmentTime] = useState("");
+  const [reason, setReason] = useState("");
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
+      <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+        <h3 className="text-xl font-bold">Book Appointment</h3>
+        <div className="mt-4 grid gap-3">
+          <select
+            value={doctorId}
+            onChange={(event) => setDoctorId(event.target.value)}
+            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-slate-800"
+          >
+            <option value="">Select doctor</option>
+            {doctors.map((doctor) => (
+              <option key={doctor.id} value={doctor.id}>
+                {doctor.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={appointmentDate}
+            onChange={(event) => setAppointmentDate(event.target.value)}
+            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-slate-800"
+          />
+          <input
+            type="time"
+            value={appointmentTime}
+            onChange={(event) => setAppointmentTime(event.target.value)}
+            className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-slate-800"
+          />
+          <textarea
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Reason"
+            className="min-h-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-slate-800"
+          />
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="outline" className="rounded-2xl" onClick={onClose}>
+            Close
+          </Button>
+          <Button
+            className="rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500"
+            onClick={() => {
+              if (!doctorId || !appointmentDate || !appointmentTime) {
+                ToastUtils.error("Please fill doctor, date, and time.");
+                return;
+              }
+
+              const normalizedTime = appointmentTime.length === 5 ? `${appointmentTime}:00` : appointmentTime;
+              void onSubmit({
+                patientId,
+                doctorId,
+                appointmentDate,
+                appointmentTime: normalizedTime,
+                reason: reason || undefined,
+              });
+            }}
+          >
+            Confirm Booking
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
