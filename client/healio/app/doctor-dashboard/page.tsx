@@ -367,7 +367,7 @@ function DashboardHeader({
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.26em] text-sky-600 dark:text-sky-300">Doctor Workspace</p>
-              <h1 className="text-xl font-bold sm:text-2xl">Good morning, {displayName}</h1>
+              <h1 className="text-xl font-bold sm:text-2xl">Welcome, {displayName}</h1>
               <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
                 {specialty || "Healio Medical Center"}
               </p>
