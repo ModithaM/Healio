@@ -85,6 +85,21 @@ public class DoctorService {
                 .collect(Collectors.toList());
     }
 
+    //Admin: Verification
+    public List<DoctorProfileResponseDto> getDoctorsByVerificationStatus(String status) {
+        VerificationStatus verificationStatus = VerificationStatus.valueOf(status.toUpperCase());
+        return doctorRepository.findAllByVerificationStatus(verificationStatus).stream()
+                .map(this::enrichDoctorResponse)
+                .collect(Collectors.toList());
+    }
+
+    public DoctorProfileResponseDto updateVerificationStatus(String doctorId, String status) {
+        DoctorProfile doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new NotFoundException("Doctor profile not found with id: " + doctorId));
+        doctor.setVerificationStatus(VerificationStatus.valueOf(status.toUpperCase()));
+        return enrichDoctorResponse(doctorRepository.save(doctor));
+    }
+
     //private Helpers
     private DoctorProfileResponseDto enrichDoctorResponse(DoctorProfile doctor) {
         DoctorProfileResponseDto dto = modelMapper.map(doctor, DoctorProfileResponseDto.class);
