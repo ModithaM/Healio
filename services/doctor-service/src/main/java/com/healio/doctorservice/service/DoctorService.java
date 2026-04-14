@@ -100,6 +100,55 @@ public class DoctorService {
         return enrichDoctorResponse(doctorRepository.save(doctor));
     }
 
+    //Availability Management
+    public DoctorAvailabilityResponseDto addAvailability(String userId, DoctorAvailabilityRequest request) {
+        DoctorProfile doctor = doctorRepository.findByUserId(userId)
+                .orElseThrow(() -> new NotFoundException("Doctor profile not found for userId: " + userId));
+
+        DoctorAvailability availability = modelMapper.map(request, DoctorAvailability.class);
+        availability.setDoctor(doctor);
+        if (availability.getIsActive() == null) {
+            availability.setIsActive(true);
+        }
+
+        DoctorAvailability saved = availabilityRepository.save(availability);
+        return modelMapper.map(saved, DoctorAvailabilityResponseDto.class);
+    }
+
+    public List<DoctorAvailabilityResponseDto> getAvailabilityByUserId(String userId) {
+        DoctorProfile doctor = doctorRepository.findByUserId(userId)
+                .orElseThrow(() -> new NotFoundException("Doctor profile not found for userId: " + userId));
+        return availabilityRepository.findAllByDoctorId(doctor.getId()).stream()
+                .map(a -> modelMapper.map(a, DoctorAvailabilityResponseDto.class))
+                .collect(Collectors.toList());
+    }
+
+    public DoctorAvailabilityResponseDto updateAvailability(String userId, String availabilityId,
+                                                            DoctorAvailabilityRequest request) {
+        DoctorProfile doctor = doctorRepository.findByUserId(userId)
+                .orElseThrow(() -> new NotFoundException("Doctor profile not found for userId: " + userId));
+        DoctorAvailability availability = availabilityRepository
+                .findByIdAndDoctorId(availabilityId, doctor.getId())
+                .orElseThrow(() -> new NotFoundException("Availability slot not found with id: " + availabilityId));
+
+        modelMapper.map(request, availability);
+        DoctorAvailability updated = availabilityRepository.save(availability);
+        return modelMapper.map(updated, DoctorAvailabilityResponseDto.class);
+    }
+
+    public void deleteAvailability(String userId, String availabilityId) {
+        DoctorProfile doctor = doctorRepository.findByUserId(userId)
+                .orElseThrow(() -> new NotFoundException("Doctor profile not found for userId: " + userId));
+        DoctorAvailability availability = availabilityRepository
+                .findByIdAndDoctorId(availabilityId, doctor.getId())
+                .orElseThrow(() -> new NotFoundException("Availability slot not found with id: " + availabilityId));
+
+        if (!availability.getDoctor().getId().equals(doctor.getId())) {
+            throw new UnauthorizedException("Availability slot does not belong to this doctor");
+        }
+        availabilityRepository.delete(availability);
+    }
+
     //private Helpers
     private DoctorProfileResponseDto enrichDoctorResponse(DoctorProfile doctor) {
         DoctorProfileResponseDto dto = modelMapper.map(doctor, DoctorProfileResponseDto.class);
