@@ -5,6 +5,7 @@ import type {
   SessionStatus,
   StartSessionResponse,
   TelemedicineSession,
+  UpdateTelemedicineSessionPayload,
 } from "@/types/telemedicine/types";
 
 type GetSessionsParams = {
@@ -18,6 +19,18 @@ export const createTelemedicineSession = async (
 ): Promise<TelemedicineSession> => {
   const response = await privateAxios.post<TelemedicineSession>("/telemedicine-service/sessions", payload);
   return response.data;
+};
+
+export const updateTelemedicineSession = async (
+  sessionId: string,
+  payload: UpdateTelemedicineSessionPayload
+): Promise<TelemedicineSession> => {
+  const response = await privateAxios.put<TelemedicineSession>(`/telemedicine-service/sessions/${sessionId}`, payload);
+  return response.data;
+};
+
+export const deleteTelemedicineSession = async (sessionId: string): Promise<void> => {
+  await privateAxios.delete(`/telemedicine-service/sessions/${sessionId}`);
 };
 
 export const getTelemedicineSessions = async ({

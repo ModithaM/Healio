@@ -15,6 +15,13 @@ export type CreateTelemedicineSessionPayload = {
   scheduledEndTime: string;
 };
 
+export type UpdateTelemedicineSessionPayload = {
+  sessionTitle: string;
+  description?: string;
+  scheduledStartTime: string;
+  scheduledEndTime: string;
+};
+
 export type TelemedicineSession = {
   id: string;
   appointmentId: string;

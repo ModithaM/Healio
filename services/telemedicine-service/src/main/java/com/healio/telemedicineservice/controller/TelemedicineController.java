@@ -55,6 +55,12 @@ public class TelemedicineController {
         return ResponseEntity.ok(telemedicineSessionService.cancelSession(id));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSession(@PathVariable String id) {
+        telemedicineSessionService.deleteSession(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/start")
     public ResponseEntity<StartSessionResponse> startSession(@PathVariable String id) {
         return ResponseEntity.ok(telemedicineSessionService.startSession(id));

@@ -22,6 +22,8 @@ public interface TelemedicineSessionService {
 
     TelemedicineSessionResponse cancelSession(String id);
 
+    void deleteSession(String id);
+
     StartSessionResponse startSession(String id);
 
     TelemedicineSessionResponse completeSession(String id);

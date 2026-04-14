@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { usePatients } from "@/hooks/usePatients";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/utils";
-import { createTelemedicineSession } from "@/service/telemedicine";
+import { createTelemedicineSession, updateTelemedicineSession } from "@/service/telemedicine";
 import type { TelemedicineSession } from "@/types/telemedicine/types";
 import ToastUtils from "@/utils/toastUtils";
 import { toLocalInputDateTime } from "./telemedicine-utils";
 
 type CreateSessionDialogProps = {
   doctorId: string;
+  initialSession?: TelemedicineSession | null;
   onClose: () => void;
   onCreated: (session: TelemedicineSession) => void;
 };
@@ -28,7 +29,8 @@ type FormState = {
   scheduledEndTime: string;
 };
 
-export function CreateSessionDialog({ doctorId, onClose, onCreated }: CreateSessionDialogProps) {
+export function CreateSessionDialog({ doctorId, initialSession, onClose, onCreated }: CreateSessionDialogProps) {
+  const isEditing = Boolean(initialSession);
   const now = useMemo(() => new Date(), []);
   const defaultStart = useMemo(() => toLocalInputDateTime(new Date(now.getTime() + 30 * 60_000)), [now]);
   const defaultEnd = useMemo(() => toLocalInputDateTime(new Date(now.getTime() + 60 * 60_000)), [now]);
@@ -36,12 +38,12 @@ export function CreateSessionDialog({ doctorId, onClose, onCreated }: CreateSess
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [form, setForm] = useState<FormState>({
-    appointmentId: `TM-${Date.now()}`,
-    patientId: "",
-    sessionTitle: "",
-    description: "",
-    scheduledStartTime: defaultStart,
-    scheduledEndTime: defaultEnd,
+    appointmentId: initialSession?.appointmentId ?? `TM-${Date.now()}`,
+    patientId: initialSession?.patientId ?? "",
+    sessionTitle: initialSession?.sessionTitle ?? "",
+    description: initialSession?.description ?? "",
+    scheduledStartTime: initialSession ? toLocalInputDateTime(new Date(initialSession.scheduledStartTime)) : defaultStart,
+    scheduledEndTime: initialSession ? toLocalInputDateTime(new Date(initialSession.scheduledEndTime)) : defaultEnd,
   });
 
   const labelClass = "grid min-w-0 gap-1.5";
@@ -79,20 +81,25 @@ export function CreateSessionDialog({ doctorId, onClose, onCreated }: CreateSess
 
     setIsSubmitting(true);
     try {
-      const session = await createTelemedicineSession({
-        appointmentId: form.appointmentId.trim(),
-        patientId: form.patientId,
-        doctorId,
+      const payload = {
         sessionTitle: form.sessionTitle.trim(),
         description: form.description.trim(),
         scheduledStartTime: form.scheduledStartTime,
         scheduledEndTime: form.scheduledEndTime,
-      });
-      ToastUtils.success("Telemedicine session created.");
+      };
+      const session = initialSession
+        ? await updateTelemedicineSession(initialSession.id, payload)
+        : await createTelemedicineSession({
+            ...payload,
+            appointmentId: form.appointmentId.trim(),
+            patientId: form.patientId,
+            doctorId,
+          });
+      ToastUtils.success(initialSession ? "Telemedicine session updated." : "Telemedicine session created.");
       onCreated(session);
       onClose();
     } catch (error) {
-      ToastUtils.error(getApiErrorMessage(error, "Unable to create telemedicine session."));
+      ToastUtils.error(getApiErrorMessage(error, initialSession ? "Unable to update telemedicine session." : "Unable to create telemedicine session."));
     } finally {
       setIsSubmitting(false);
     }
@@ -119,11 +126,11 @@ export function CreateSessionDialog({ doctorId, onClose, onCreated }: CreateSess
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-600 dark:text-sky-300">
-              Generate session
+              {isEditing ? "Update session" : "Generate session"}
             </p>
-            <h3 className="mt-2 text-xl font-bold">Create video consultation</h3>
+            <h3 className="mt-2 text-xl font-bold">{isEditing ? "Edit video consultation" : "Create video consultation"}</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-              Select a patient, set the schedule, and prepare the video room.
+              {isEditing ? "Update the session title, description, and schedule." : "Select a patient, set the schedule, and prepare the video room."}
             </p>
           </div>
           <button
@@ -143,7 +150,7 @@ export function CreateSessionDialog({ doctorId, onClose, onCreated }: CreateSess
               className={fieldClass}
               value={form.patientId}
               onChange={(event) => setField("patientId", event.target.value)}
-              disabled={patientsLoading}
+              disabled={patientsLoading || isEditing}
             >
               <option value="">{patientsLoading ? "Loading patients..." : "Select patient"}</option>
               {patients.map((patient) => (
@@ -164,6 +171,7 @@ export function CreateSessionDialog({ doctorId, onClose, onCreated }: CreateSess
               className={fieldClass}
               value={form.appointmentId}
               onChange={(event) => setField("appointmentId", event.target.value)}
+              disabled={isEditing}
             />
             {errors.appointmentId && <span className="text-xs font-semibold text-rose-500">{errors.appointmentId}</span>}
           </label>
@@ -223,7 +231,7 @@ export function CreateSessionDialog({ doctorId, onClose, onCreated }: CreateSess
             className="flex-1 rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500"
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}
-            {isSubmitting ? "Creating..." : "Create Session"}
+            {isSubmitting ? (isEditing ? "Saving..." : "Creating...") : (isEditing ? "Save Changes" : "Create Session")}
           </Button>
           <Button type="button" variant="outline" className="flex-1 rounded-2xl" onClick={onClose}>
             <CalendarClock className="h-4 w-4" />

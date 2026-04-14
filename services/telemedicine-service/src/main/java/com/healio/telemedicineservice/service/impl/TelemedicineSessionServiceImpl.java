@@ -90,6 +90,16 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
     }
 
     @Override
+    public void deleteSession(String id) {
+        TelemedicineSession session = getSessionOrThrow(id);
+        if (session.getStatus() == SessionStatus.ONGOING) {
+            throw new TelemedicineBadRequestException("Ongoing sessions cannot be deleted");
+        }
+
+        sessionRepository.delete(session);
+    }
+
+    @Override
     public StartSessionResponse startSession(String id) {
         TelemedicineSession session = getSessionOrThrow(id);
         if (session.getStatus() == SessionStatus.CANCELLED) {

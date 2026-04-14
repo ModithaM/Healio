@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Video } from "lucide-react";
+import { Loader2, Pencil, Trash2, Video } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,8 @@ type TelemedicineSessionTableProps = {
   viewer: "doctor" | "patient";
   patients?: PatientNameOption[];
   onJoin: (session: TelemedicineSession) => void;
+  onEdit?: (session: TelemedicineSession) => void;
+  onDelete?: (session: TelemedicineSession) => void;
 };
 
 export function TelemedicineSessionTable({
@@ -21,6 +23,8 @@ export function TelemedicineSessionTable({
   viewer,
   patients = [],
   onJoin,
+  onEdit,
+  onDelete,
 }: TelemedicineSessionTableProps) {
   const patientNameById = new Map(patients.map((patient) => [patient.id, patient.fullName]));
   const partyLabel = viewer === "doctor" ? "Patient" : "Doctor";
@@ -45,7 +49,7 @@ export function TelemedicineSessionTable({
   return (
     <>
       <div className="mt-5 hidden overflow-hidden rounded-[24px] border border-slate-200/70 bg-white/60 dark:border-white/10 dark:bg-white/[0.05] lg:block">
-        <div className="grid grid-cols-[1.15fr_0.85fr_1fr_0.65fr_0.7fr] gap-4 border-b border-slate-200/70 px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:border-white/10">
+        <div className="grid grid-cols-[1.15fr_0.85fr_1fr_0.65fr_1fr] gap-4 border-b border-slate-200/70 px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:border-white/10">
           <span>Session</span>
           <span>{partyLabel}</span>
           <span>Schedule</span>
@@ -55,7 +59,7 @@ export function TelemedicineSessionTable({
         {sessions.map((session) => (
           <div
             key={session.id}
-            className="grid grid-cols-[1.15fr_0.85fr_1fr_0.65fr_0.7fr] items-center gap-4 border-b border-slate-200/70 px-5 py-4 last:border-b-0 dark:border-white/10"
+            className="grid grid-cols-[1.15fr_0.85fr_1fr_0.65fr_1fr] items-center gap-4 border-b border-slate-200/70 px-5 py-4 last:border-b-0 dark:border-white/10"
           >
             <div>
               <p className="font-bold">{session.sessionTitle}</p>
@@ -72,7 +76,7 @@ export function TelemedicineSessionTable({
             <span className={cn("w-fit rounded-full px-3 py-1.5 text-xs font-bold", getSessionStatusClass(session.status))}>
               {session.status}
             </span>
-            <div className="flex justify-end">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button
                 className="rounded-2xl bg-emerald-500 hover:bg-emerald-400"
                 disabled={!canJoinSession(session)}
@@ -81,6 +85,30 @@ export function TelemedicineSessionTable({
                 <Video className="h-4 w-4" />
                 Join
               </Button>
+              {viewer === "doctor" && onEdit && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-2xl"
+                  disabled={session.status === "COMPLETED"}
+                  onClick={() => onEdit(session)}
+                  aria-label={`Edit ${session.sessionTitle}`}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+              {viewer === "doctor" && onDelete && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-2xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                  disabled={session.status === "ONGOING"}
+                  onClick={() => onDelete(session)}
+                  aria-label={`Delete ${session.sessionTitle}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
         ))}
@@ -106,14 +134,38 @@ export function TelemedicineSessionTable({
             <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
               {partyLabel}: {viewer === "doctor" ? patientNameById.get(session.patientId) ?? session.patientId : session.doctorId}
             </p>
-            <Button
-              className="mt-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400"
-              disabled={!canJoinSession(session)}
-              onClick={() => onJoin(session)}
-            >
-              <Video className="h-4 w-4" />
-              Join
-            </Button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                className="rounded-2xl bg-emerald-500 hover:bg-emerald-400"
+                disabled={!canJoinSession(session)}
+                onClick={() => onJoin(session)}
+              >
+                <Video className="h-4 w-4" />
+                Join
+              </Button>
+              {viewer === "doctor" && onEdit && (
+                <Button
+                  variant="outline"
+                  className="rounded-2xl"
+                  disabled={session.status === "COMPLETED"}
+                  onClick={() => onEdit(session)}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Button>
+              )}
+              {viewer === "doctor" && onDelete && (
+                <Button
+                  variant="outline"
+                  className="rounded-2xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                  disabled={session.status === "ONGOING"}
+                  onClick={() => onDelete(session)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              )}
+            </div>
           </div>
         ))}
       </div>
