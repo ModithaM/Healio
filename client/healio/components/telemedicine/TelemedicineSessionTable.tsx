@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, Pencil, Trash2, Video, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, Pencil, Trash2, Video, XCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,8 @@ type TelemedicineSessionTableProps = {
   onEdit?: (session: TelemedicineSession) => void;
   onDelete?: (session: TelemedicineSession) => void;
   onCancel?: (session: TelemedicineSession) => void;
+  onComplete?: (session: TelemedicineSession) => void;
+  pageSize?: number;
 };
 
 export function TelemedicineSessionTable({
@@ -27,9 +30,23 @@ export function TelemedicineSessionTable({
   onEdit,
   onDelete,
   onCancel,
+  onComplete,
+  pageSize,
 }: TelemedicineSessionTableProps) {
+  const [currentPage, setCurrentPage] = useState(1);
   const patientNameById = new Map(patients.map((patient) => [patient.id, patient.fullName]));
   const partyLabel = viewer === "doctor" ? "Patient" : "Doctor";
+  const rowsPerPage = pageSize ?? Math.max(1, sessions.length);
+  const totalPages = Math.max(1, Math.ceil(sessions.length / rowsPerPage));
+  const displayedSessions = useMemo(
+    () => sessions.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage),
+    [currentPage, rowsPerPage, sessions],
+  );
+  const showPagination = Boolean(pageSize && sessions.length > pageSize);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   if (isLoading) {
     return (
@@ -49,8 +66,8 @@ export function TelemedicineSessionTable({
   }
 
   return (
-    <>
-      <div className="mt-5 hidden overflow-hidden rounded-[24px] border border-slate-200/70 bg-white/60 dark:border-white/10 dark:bg-white/[0.05] lg:block">
+    <div className="mt-5 flex flex-1 flex-col">
+      <div className="hidden overflow-hidden rounded-[24px] border border-slate-200/70 bg-white/60 dark:border-white/10 dark:bg-white/[0.05] lg:block">
         <div className="grid grid-cols-[1.15fr_0.85fr_1fr_0.65fr_1fr] gap-4 border-b border-slate-200/70 px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:border-white/10">
           <span>Session</span>
           <span>{partyLabel}</span>
@@ -58,7 +75,7 @@ export function TelemedicineSessionTable({
           <span>Status</span>
           <span className="text-right">Actions</span>
         </div>
-        {sessions.map((session) => (
+        {displayedSessions.map((session) => (
           <div
             key={session.id}
             className="grid grid-cols-[1.15fr_0.85fr_1fr_0.65fr_1fr] items-center gap-4 border-b border-slate-200/70 px-5 py-4 last:border-b-0 dark:border-white/10"
@@ -80,13 +97,25 @@ export function TelemedicineSessionTable({
             </span>
             <div className="flex flex-wrap justify-end gap-2">
               <Button
-                className="rounded-2xl bg-emerald-500 hover:bg-emerald-400"
+                className="rounded-2xl bg-sky-100 text-sky-900 hover:bg-sky-200"
                 disabled={!canJoinSession(session)}
                 onClick={() => onJoin(session)}
               >
                 <Video className="h-4 w-4" />
                 Join
               </Button>
+              {viewer === "doctor" && onComplete && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-2xl text-emerald-600 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                  disabled={session.status !== "ONGOING"}
+                  onClick={() => onComplete(session)}
+                  aria-label={`Complete ${session.sessionTitle}`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                </Button>
+              )}
               {viewer === "doctor" && onEdit && (
                 <Button
                   variant="outline"
@@ -128,8 +157,8 @@ export function TelemedicineSessionTable({
         ))}
       </div>
 
-      <div className="mt-5 grid gap-3.5 lg:hidden">
-        {sessions.map((session) => (
+      <div className="grid gap-3.5 lg:hidden">
+        {displayedSessions.map((session) => (
           <div
             key={session.id}
             className="rounded-[26px] border border-slate-200/70 bg-white/64 p-4 dark:border-white/10 dark:bg-white/[0.05]"
@@ -150,13 +179,24 @@ export function TelemedicineSessionTable({
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button
-                className="rounded-2xl bg-emerald-500 hover:bg-emerald-400"
+                className="rounded-2xl bg-sky-100 text-sky-900 hover:bg-sky-200"
                 disabled={!canJoinSession(session)}
                 onClick={() => onJoin(session)}
               >
                 <Video className="h-4 w-4" />
                 Join
               </Button>
+              {viewer === "doctor" && onComplete && (
+                <Button
+                  variant="outline"
+                  className="rounded-2xl text-emerald-600 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                  disabled={session.status !== "ONGOING"}
+                  onClick={() => onComplete(session)}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Complete
+                </Button>
+              )}
               {viewer === "doctor" && onEdit && (
                 <Button
                   variant="outline"
@@ -194,6 +234,33 @@ export function TelemedicineSessionTable({
           </div>
         ))}
       </div>
-    </>
+      {showPagination && (
+        <div className="mt-auto flex flex-col gap-3 rounded-[22px] border border-slate-200/70 bg-white/60 px-4 py-3 text-sm font-bold text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            Page {currentPage} of {totalPages} · {sessions.length} sessions
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="rounded-2xl"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-2xl"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

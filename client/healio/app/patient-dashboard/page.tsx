@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -546,6 +546,26 @@ function AppointmentsSection({
   sessionsLoading: boolean;
   onJoinSession: (session: TelemedicineSession) => void;
 }) {
+  const sortedTelemedicineSessions = useMemo(() => {
+    const statusPriority: Record<TelemedicineSession["status"], number> = {
+      SCHEDULED: 0,
+      WAITING: 1,
+      ONGOING: 2,
+      COMPLETED: 3,
+      CANCELLED: 4,
+    };
+
+    return [...telemedicineSessions].sort((current, next) => {
+      const priorityDifference = statusPriority[current.status] - statusPriority[next.status];
+
+      if (priorityDifference !== 0) {
+        return priorityDifference;
+      }
+
+      return Date.parse(current.scheduledStartTime) - Date.parse(next.scheduledStartTime);
+    });
+  }, [telemedicineSessions]);
+
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -595,16 +615,17 @@ function AppointmentsSection({
         ))}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-1 flex-col">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-600 dark:text-sky-300">Telemedicine</p>
           <h3 className="mt-1 text-lg font-bold">Online consultation sessions</h3>
         </div>
         <TelemedicineSessionTable
-          sessions={telemedicineSessions}
+          sessions={sortedTelemedicineSessions}
           isLoading={sessionsLoading}
           viewer="patient"
           onJoin={onJoinSession}
+          pageSize={6}
         />
       </div>
     </Card>

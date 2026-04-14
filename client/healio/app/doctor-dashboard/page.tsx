@@ -37,13 +37,14 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AgoraMeeting } from "@/components/telemedicine/AgoraMeeting";
 import { CreateSessionDialog } from "@/components/telemedicine/CreateSessionDialog";
 import { TelemedicineSessionTable } from "@/components/telemedicine/TelemedicineSessionTable";
+import { canJoinSession } from "@/components/telemedicine/telemedicine-utils";
 import { usePatients } from "@/hooks/usePatients";
 import { useTelemedicineSessions } from "@/hooks/useTelemedicineSessions";
 import { getApiErrorMessage } from "@/lib/apiError";
@@ -56,6 +57,7 @@ import {
 } from "@/service/doctorApi";
 import {
   cancelTelemedicineSession,
+  completeTelemedicineSession,
   deleteTelemedicineSession,
   getTelemedicineJoinDetails,
   startTelemedicineSession,
@@ -283,6 +285,20 @@ export default function DoctorDashboardPage() {
     }
   };
 
+  const handleCompleteSession = async (session: TelemedicineSession) => {
+    if (!window.confirm(`Complete telemedicine session "${session.sessionTitle}"?`)) {
+      return;
+    }
+
+    try {
+      await completeTelemedicineSession(session.id);
+      ToastUtils.success("Telemedicine session completed.");
+      void refetchTelemedicineSessions();
+    } catch (error) {
+      ToastUtils.error(getApiErrorMessage(error, "Unable to complete telemedicine session."));
+    }
+  };
+
   return (
     <div className={cn(isDark && "dark")}>
       <main className="min-h-screen overflow-hidden bg-[#f4f9fc] text-slate-950 transition-colors duration-500 dark:bg-[#020817] dark:text-white [&_a]:cursor-pointer [&_button]:cursor-pointer">
@@ -336,6 +352,7 @@ export default function DoctorDashboardPage() {
                 onEditSession={handleEditSession}
                 onDeleteSession={handleDeleteSession}
                 onCancelSession={handleCancelSession}
+                onCompleteSession={handleCompleteSession}
               />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-4">
@@ -360,6 +377,7 @@ export default function DoctorDashboardPage() {
                 isLoading={sessionsLoading}
                 patientOptions={patientOptions}
                 onJoinSession={handleJoinSession}
+                onCompleteSession={handleCompleteSession}
                 onCreateSession={handleOpenCreateSession}
               />
             </motion.div>
@@ -724,6 +742,7 @@ function TelemedicineQueueTable({
   onEditSession,
   onDeleteSession,
   onCancelSession,
+  onCompleteSession,
 }: {
   telemedicineSessions: TelemedicineSession[];
   sessionsLoading: boolean;
@@ -732,7 +751,28 @@ function TelemedicineQueueTable({
   onEditSession: (session: TelemedicineSession) => void;
   onDeleteSession: (session: TelemedicineSession) => void;
   onCancelSession: (session: TelemedicineSession) => void;
+  onCompleteSession: (session: TelemedicineSession) => void;
 }) {
+  const sortedTelemedicineSessions = useMemo(() => {
+    const statusPriority: Record<TelemedicineSession["status"], number> = {
+      SCHEDULED: 0,
+      WAITING: 1,
+      ONGOING: 2,
+      COMPLETED: 3,
+      CANCELLED: 4,
+    };
+
+    return [...telemedicineSessions].sort((current, next) => {
+      const priorityDifference = statusPriority[current.status] - statusPriority[next.status];
+
+      if (priorityDifference !== 0) {
+        return priorityDifference;
+      }
+
+      return Date.parse(current.scheduledStartTime) - Date.parse(next.scheduledStartTime);
+    });
+  }, [telemedicineSessions]);
+
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -744,7 +784,7 @@ function TelemedicineQueueTable({
       </div>
 
       <TelemedicineSessionTable
-        sessions={telemedicineSessions}
+        sessions={sortedTelemedicineSessions}
         isLoading={sessionsLoading}
         viewer="doctor"
         patients={patientOptions}
@@ -752,6 +792,8 @@ function TelemedicineQueueTable({
         onEdit={onEditSession}
         onDelete={onDeleteSession}
         onCancel={onCancelSession}
+        onComplete={onCompleteSession}
+        pageSize={6}
       />
     </Card>
   );
@@ -926,14 +968,25 @@ function TelemedicineSessions({
   isLoading,
   patientOptions,
   onJoinSession,
+  onCompleteSession,
   onCreateSession,
 }: {
   sessions: TelemedicineSession[];
   isLoading: boolean;
   patientOptions: { id: string; fullName: string }[];
   onJoinSession: (session: TelemedicineSession) => void;
+  onCompleteSession: (session: TelemedicineSession) => void;
   onCreateSession: () => void;
 }) {
+  const nextJoinableSession = sessions.find(canJoinSession);
+  const latestSessions = useMemo(
+    () =>
+      [...sessions]
+        .sort((current, next) => Date.parse(next.createdAt) - Date.parse(current.createdAt))
+        .slice(0, 4),
+    [sessions],
+  );
+
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -945,8 +998,8 @@ function TelemedicineSessions({
           </Button>
           <Button
             className="rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500"
-            disabled={sessions.length === 0}
-            onClick={() => sessions[0] && onJoinSession(sessions[0])}
+            disabled={!nextJoinableSession}
+            onClick={() => nextJoinableSession && onJoinSession(nextJoinableSession)}
           >
             <Video className="h-4 w-4" />
             Open Next Room
@@ -1000,7 +1053,7 @@ function TelemedicineSessions({
               Loading sessions...
             </div>
           )}
-          {!isLoading && sessions.map((session) => (
+          {!isLoading && latestSessions.map((session) => (
             <div key={session.id} className="relative overflow-hidden rounded-[24px] bg-slate-950 p-4 text-white shadow-2xl shadow-sky-950/15 transition duration-300 hover:-translate-y-1">
               <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-sky-400/25 blur-2xl" />
               <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-emerald-400/20 blur-2xl" />
@@ -1010,9 +1063,18 @@ function TelemedicineSessions({
                   <h3 className="mt-4 text-lg font-bold">{session.sessionTitle}</h3>
                   <p className="mt-2 text-sm text-slate-300">{patientOptions.find((patient) => patient.id === session.patientId)?.fullName ?? session.patientId}</p>
                 </div>
-                <Button className="rounded-2xl bg-white text-slate-950 hover:bg-sky-50" onClick={() => onJoinSession(session)}>
-                  Join Now
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {canJoinSession(session) && (
+                    <Button className="rounded-2xl bg-sky-100 px-4 font-bold text-sky-900 hover:bg-sky-200" onClick={() => onJoinSession(session)}>
+                      Join Now
+                    </Button>
+                  )}
+                  {session.status === "ONGOING" && (
+                    <Button className="rounded-2xl bg-emerald-500 px-4 font-bold text-white hover:bg-emerald-400" onClick={() => onCompleteSession(session)}>
+                      Complete
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
