@@ -67,6 +67,12 @@ public class DoctorService {
         return enrichDoctorResponse(updatedDoctor);
     }
 
+    public void deleteDoctorProfile(String userId) {
+        DoctorProfile doctor = doctorRepository.findByUserId(userId)
+                .orElseThrow(() -> new NotFoundException("Doctor profile not found for userId: " + userId));
+        doctorRepository.delete(doctor);
+    }
+
     //private Helpers
     private DoctorProfileResponseDto enrichDoctorResponse(DoctorProfile doctor) {
         DoctorProfileResponseDto dto = modelMapper.map(doctor, DoctorProfileResponseDto.class);
