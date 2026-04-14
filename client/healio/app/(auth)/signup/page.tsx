@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useCallback } from "react";
 import {
   CalendarCheck,
   LockKeyhole,
@@ -23,11 +23,25 @@ import {
 import { registerUser } from "@/service/userApi";
 import { UserData } from "@/types/user/types";
 import ToastUtils from "@/utils/toastUtils";
+import { registerSchema } from "@/validation/registerValidation";
+import { ValidationError } from "yup";
+
+type FormErrors = {
+  [key: string]: string;
+};
+
+type TouchedFields = {
+  [key: string]: boolean;
+};
 
 const Page = () => {
   const router = useRouter();
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [touchedFields, setTouchedFields] = useState<TouchedFields>({});
   const [userData, setUserData] = useState<UserData>({
     username: "",
     firstName: "",
@@ -37,20 +51,123 @@ const Page = () => {
     role: "USER",
   });
 
-  const passwordMismatch =
-    confirmPassword.length > 0 && userData.password !== confirmPassword;
+  const validateField = useCallback(
+    async (fieldName: string, value: string | boolean) => {
+      try {
+        const testValue = {
+          ...userData,
+          confirmPassword,
+          termsAccepted,
+          [fieldName]: value,
+        };
+        await registerSchema.validateAt(fieldName, testValue);
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next[fieldName];
+          return next;
+        });
+      } catch (error) {
+        if (error instanceof ValidationError) {
+          setFormErrors((prev) => ({
+            ...prev,
+            [fieldName]: error.message,
+          }));
+        }
+      }
+    },
+    [userData, confirmPassword, termsAccepted]
+  );
+
+  const handleInputChange = (field: string, value: string) => {
+    setUserData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    if (touchedFields[field]) {
+      validateField(field, value);
+    }
+  };
+
+  const handleFieldBlur = async (fieldName: string) => {
+    setTouchedFields((prev) => ({
+      ...prev,
+      [fieldName]: true,
+    }));
+
+    if (fieldName === "confirmPassword") {
+      await validateField("confirmPassword", confirmPassword);
+    } else if (fieldName === "password") {
+      await validateField("password", userData.password);
+      if (confirmPassword) {
+        await validateField("confirmPassword", confirmPassword);
+      }
+    } else {
+      await validateField(
+        fieldName,
+        fieldName === "email" ? userData.email : userData[fieldName as keyof UserData]
+      );
+    }
+  };
+
+  const handlePasswordConfirmChange = (value: string) => {
+    setConfirmPassword(value);
+
+    if (touchedFields.confirmPassword) {
+      validateField("confirmPassword", value);
+    }
+  };
+
+  const handlePasswordConfirmBlur = async () => {
+    setTouchedFields((prev) => ({
+      ...prev,
+      confirmPassword: true,
+    }));
+    await validateField("confirmPassword", confirmPassword);
+  };
+
+  const handleTermsChange = async (checked: boolean) => {
+    setTermsAccepted(checked);
+    setTouchedFields((prev) => ({
+      ...prev,
+      termsAccepted: true,
+    }));
+
+    try {
+      await registerSchema.validateAt("termsAccepted", {
+        ...userData,
+        confirmPassword,
+        termsAccepted: checked,
+      });
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.termsAccepted;
+        return next;
+      });
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        setFormErrors((prev) => ({
+          ...prev,
+          termsAccepted: error.message,
+        }));
+      }
+    }
+  };
 
   const handleSubmission = async (e: FormEvent) => {
     e.preventDefault();
-
-    if (userData.password !== confirmPassword) {
-      setErrorMessage("Password does not match");
-      return;
-    }
-
+    setIsSubmitting(true);
     setErrorMessage("");
 
     try {
+      const validationData = {
+        ...userData,
+        confirmPassword,
+        termsAccepted,
+      };
+
+      await registerSchema.validate(validationData, { abortEarly: false });
+
       const response = await registerUser(userData);
       if (response.success) {
         ToastUtils.success("Registration successful! Please sign in.");
@@ -59,7 +176,20 @@ const Page = () => {
         setErrorMessage(response.error);
       }
     } catch (error) {
-      console.error("Error registering user:", error);
+      if (error instanceof ValidationError) {
+        const errors: FormErrors = {};
+        error.inner.forEach((err) => {
+          if (err.path) {
+            errors[err.path] = err.message;
+          }
+        });
+        setFormErrors(errors);
+      } else {
+        console.error("Error registering user:", error);
+        setErrorMessage("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -112,10 +242,12 @@ const Page = () => {
             icon={UserRound}
             type="text"
             value={userData.firstName}
-            onChange={(e) => setUserData({ ...userData, firstName: e.target.value })}
+            onChange={(e) => handleInputChange("firstName", e.target.value)}
+            onBlur={() => handleFieldBlur("firstName")}
             placeholder="Nadia"
             autoComplete="given-name"
-            required
+            error={formErrors.firstName}
+            touched={touchedFields.firstName}
           />
           <AuthInput
             id="lastName"
@@ -124,10 +256,12 @@ const Page = () => {
             icon={UserRound}
             type="text"
             value={userData.lastName}
-            onChange={(e) => setUserData({ ...userData, lastName: e.target.value })}
+            onChange={(e) => handleInputChange("lastName", e.target.value)}
+            onBlur={() => handleFieldBlur("lastName")}
             placeholder="Perera"
             autoComplete="family-name"
-            required
+            error={formErrors.lastName}
+            touched={touchedFields.lastName}
           />
         </div>
 
@@ -138,10 +272,12 @@ const Page = () => {
           icon={UserRound}
           type="text"
           value={userData.username}
-          onChange={(e) => setUserData({ ...userData, username: e.target.value })}
+          onChange={(e) => handleInputChange("username", e.target.value)}
+          onBlur={() => handleFieldBlur("username")}
           placeholder="nadia.perera"
           autoComplete="username"
-          required
+          error={formErrors.username}
+          touched={touchedFields.username}
         />
 
         <AuthInput
@@ -151,10 +287,12 @@ const Page = () => {
           icon={Mail}
           type="email"
           value={userData.email}
-          onChange={(e) => setUserData({ ...userData, email: e.target.value })}
+          onChange={(e) => handleInputChange("email", e.target.value)}
+          onBlur={() => handleFieldBlur("email")}
           placeholder="name@healio.health"
           autoComplete="email"
-          required
+          error={formErrors.email}
+          touched={touchedFields.email}
         />
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -165,10 +303,12 @@ const Page = () => {
             icon={LockKeyhole}
             type="password"
             value={userData.password}
-            onChange={(e) => setUserData({ ...userData, password: e.target.value })}
+            onChange={(e) => handleInputChange("password", e.target.value)}
+            onBlur={() => handleFieldBlur("password")}
             placeholder="Create password"
             autoComplete="new-password"
-            required
+            error={formErrors.password}
+            touched={touchedFields.password}
           />
           <AuthInput
             id="confirmPassword"
@@ -177,10 +317,12 @@ const Page = () => {
             icon={LockKeyhole}
             type="password"
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => handlePasswordConfirmChange(e.target.value)}
+            onBlur={handlePasswordConfirmBlur}
             placeholder="Repeat password"
             autoComplete="new-password"
-            required
+            error={formErrors.confirmPassword}
+            touched={touchedFields.confirmPassword}
           />
         </div>
 
@@ -197,7 +339,7 @@ const Page = () => {
               id="role"
               name="role"
               value={userData.role}
-              onChange={(e) => setUserData({ ...userData, role: e.target.value })}
+              onChange={(e) => handleInputChange("role", e.target.value)}
               className="h-11 w-full appearance-none rounded-xl border border-slate-200/80 bg-white/75 py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-900 shadow-sm outline-none backdrop-blur-md transition focus:border-sky-300 focus:bg-white focus:ring-4 focus:ring-sky-400/15 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:focus:border-sky-300/60 dark:focus:bg-white/[0.09]"
             >
               <option value="USER">Patient</option>
@@ -212,22 +354,38 @@ const Page = () => {
         >
           <input
             type="checkbox"
-            required
+            checked={termsAccepted}
+            onChange={(e) => handleTermsChange(e.target.checked)}
             className="mt-1 h-4 w-4 rounded border-slate-300 text-sky-500 focus:ring-sky-400"
           />
           I agree to the Terms & Conditions and secure healthcare access.
         </motion.label>
 
-        {(passwordMismatch || errorMessage) && (
+        {formErrors.termsAccepted && touchedFields.termsAccepted && (
           <motion.p
             variants={authFadeUp}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
             className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-2 text-xs font-semibold text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-200"
           >
-            {errorMessage || "Password does not match"}
+            {formErrors.termsAccepted}
           </motion.p>
         )}
 
-        <AuthSubmitButton disabled={passwordMismatch}>Sign Up</AuthSubmitButton>
+        {errorMessage && (
+          <motion.p
+            variants={authFadeUp}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl border border-red-200 bg-red-50/80 px-4 py-2 text-xs font-semibold text-red-700 dark:border-red-400/20 dark:bg-red-400/10 dark:text-red-200"
+          >
+            {errorMessage}
+          </motion.p>
+        )}
+
+        <AuthSubmitButton disabled={isSubmitting || Object.keys(formErrors).length > 0}>
+          {isSubmitting ? "Creating Account..." : "Sign Up"}
+        </AuthSubmitButton>
       </motion.form>
 
       <div className="mt-4 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
