@@ -145,9 +145,9 @@ GET /v1/telemedicine-service/sessions/{id}/join-details
 The service expects Agora values from the existing root/shared configuration source:
 
 ```properties
-telemedicine.agora.app-id=your-agora-app-id
-telemedicine.agora.app-certificate=your-agora-app-certificate
-telemedicine.agora.token-expiration-seconds=3600
+AGORA_APP_ID=your-agora-app-id
+AGORA_APP_CERTIFICATE=your-agora-app-certificate
+AGORA_TOKEN_EXPIRATION_SECONDS=3600
 ```
 
 No datasource configuration is defined in this service.

@@ -8,7 +8,6 @@ import {
   Bell,
   CalendarCheck,
   CalendarClock,
-  Check,
   CheckCircle2,
   ChevronDown,
   ClipboardPlus,
@@ -35,7 +34,6 @@ import {
   UserRound,
   UsersRound,
   Video,
-  X,
 } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
@@ -89,45 +87,6 @@ const actions = [
   { label: "Join Telemedicine", icon: Video, description: "Open active online session" },
   { label: "View Patient Reports", icon: FileHeart, description: "Check attached lab results" },
   { label: "Issue Prescription", icon: Pill, description: "Create a digital prescription" },
-];
-
-const appointments = [
-  {
-    patient: "Hasindu Chanuka",
-    type: "Video consultation",
-    time: "09:30 AM",
-    status: "Active",
-    statusClass: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
-    priority: "Follow-up ECG review",
-    canJoin: true,
-  },
-  {
-    patient: "Nadia Perera",
-    type: "Clinic appointment",
-    time: "10:15 AM",
-    status: "Confirmed",
-    statusClass: "bg-sky-500/12 text-sky-700 dark:text-sky-300",
-    priority: "Blood pressure assessment",
-    canJoin: false,
-  },
-  {
-    patient: "Maya Chen",
-    type: "Appointment request",
-    time: "11:00 AM",
-    status: "Pending",
-    statusClass: "bg-amber-500/12 text-amber-700 dark:text-amber-300",
-    priority: "Chest pain triage",
-    canJoin: false,
-  },
-  {
-    patient: "Aaron Silva",
-    type: "Video consultation",
-    time: "12:30 PM",
-    status: "Ready",
-    statusClass: "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300",
-    priority: "Medication refill",
-    canJoin: true,
-  },
 ];
 
 const patients = [
@@ -319,7 +278,7 @@ export default function DoctorDashboardPage() {
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-8">
-              <AppointmentManagement
+              <TelemedicineQueueTable
                 telemedicineSessions={telemedicineSessions}
                 sessionsLoading={sessionsLoading}
                 patientOptions={patientOptions}
@@ -703,8 +662,7 @@ function QuickActions() {
   );
 }
 
-//Appointment Management
-function AppointmentManagement({
+function TelemedicineQueueTable({
   telemedicineSessions,
   sessionsLoading,
   patientOptions,
@@ -718,92 +676,21 @@ function AppointmentManagement({
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <SectionTitle eyebrow="Appointment management" title="Today&apos;s consultation queue" />
+        <SectionTitle eyebrow="Telemedicine" title="Session queue" />
         <Button variant="outline" className="rounded-2xl">
-          <CalendarCheck className="h-4 w-4" />
-          View Calendar
-        </Button>
-      </div>
-
-      <div className="mt-5 hidden overflow-hidden rounded-[24px] border border-slate-200/70 bg-white/60 dark:border-white/10 dark:bg-white/[0.05] lg:block">
-        <div className="grid grid-cols-[1fr_0.9fr_0.55fr_0.55fr_1.1fr] gap-4 border-b border-slate-200/70 px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:border-white/10">
-          <span>Patient</span>
-          <span>Type</span>
-          <span>Time</span>
-          <span>Status</span>
-          <span className="text-right">Actions</span>
-        </div>
-        {appointments.map((appt) => (
-          <div key={`${appt.patient}-${appt.time}`} className="grid grid-cols-[1fr_0.9fr_0.55fr_0.55fr_1.1fr] items-center gap-4 border-b border-slate-200/70 px-5 py-4 last:border-b-0 dark:border-white/10">
-            <div>
-              <p className="font-bold">{appt.patient}</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{appt.priority}</p>
-            </div>
-            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{appt.type}</p>
-            <p className="text-sm font-bold">{appt.time}</p>
-            <span className={cn("w-fit rounded-full px-3 py-1.5 text-xs font-bold", appt.statusClass)}>{appt.status}</span>
-            <AppointmentActions canJoin={appt.canJoin} />
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-5 grid gap-3.5 lg:hidden">
-        {appointments.map((appt) => (
-          <div key={`${appt.patient}-${appt.time}`} className="rounded-[26px] border border-slate-200/70 bg-white/64 p-4 dark:border-white/10 dark:bg-white/[0.05]">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-bold">{appt.patient}</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{appt.type} · {appt.time}</p>
-              </div>
-              <span className={cn("rounded-full px-3 py-1.5 text-xs font-bold", appt.statusClass)}>{appt.status}</span>
-            </div>
-            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{appt.priority}</p>
-            <AppointmentActions canJoin={appt.canJoin} mobile />
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-6">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-600 dark:text-sky-300">Telemedicine</p>
-            <h3 className="mt-1 text-lg font-bold">Session queue</h3>
-          </div>
-        </div>
-        <TelemedicineSessionTable
-          sessions={telemedicineSessions}
-          isLoading={sessionsLoading}
-          viewer="doctor"
-          patients={patientOptions}
-          onJoin={onJoinSession}
-        />
-      </div>
-    </Card>
-  );
-}
-
-function AppointmentActions({ canJoin, mobile = false }: { canJoin: boolean; mobile?: boolean }) {
-  return (
-    <div className={cn("flex flex-wrap items-center justify-end gap-2", mobile && "mt-4 justify-start")}>
-      {canJoin ? (
-        <Button className="rounded-2xl bg-emerald-500 hover:bg-emerald-400">
           <Video className="h-4 w-4" />
-          Join
+          Online Rooms
         </Button>
-      ) : (
-        <>
-          <Button variant="outline" size="icon" className="rounded-2xl text-emerald-600">
-            <Check className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="rounded-2xl text-rose-500">
-            <X className="h-4 w-4" />
-          </Button>
-        </>
-      )}
-      <Button variant="outline" className="rounded-2xl">
-        View Details
-      </Button>
-    </div>
+      </div>
+
+      <TelemedicineSessionTable
+        sessions={telemedicineSessions}
+        isLoading={sessionsLoading}
+        viewer="doctor"
+        patients={patientOptions}
+        onJoin={onJoinSession}
+      />
+    </Card>
   );
 }
 

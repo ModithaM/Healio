@@ -70,6 +70,7 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
   const [isLeaving, setIsLeaving] = useState(false);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   const leaveAgora = useCallback(async (updateUi = true) => {
     if (hasLeftRef.current) {
@@ -104,6 +105,7 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
         setRemoteTracks([]);
         setMicEnabled(false);
         setCameraEnabled(false);
+        setMediaError(null);
         setIsConnecting(false);
       }
     }
@@ -114,6 +116,11 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
     let joinTimeout: ReturnType<typeof setTimeout> | undefined;
 
     const join = async () => {
+      hasLeftRef.current = false;
+      localTracksRef.current = {};
+      localVideoRef.current?.replaceChildren();
+      setRemoteTracks([]);
+      setMediaError(null);
       setIsConnecting(true);
       try {
         const validationError = getAgoraJoinValidationError(joinDetails);
@@ -126,6 +133,10 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
         const AgoraRTC = (await import("agora-rtc-sdk-ng")).default;
         const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
         clientRef.current = client;
+        const isActiveClient = () => isMounted && !hasLeftRef.current && clientRef.current === client;
+        const isActiveJoinedClient = () =>
+          isActiveClient() && (client as { connectionState?: string }).connectionState === "CONNECTED";
+
         joinTimeout = setTimeout(() => {
           if (!isMounted || hasLeftRef.current) {
             return;
@@ -136,7 +147,23 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
         }, joinTimeoutMs);
 
         client.on("user-published", async (user, mediaType) => {
-          await client.subscribe(user, mediaType);
+          if (!isActiveJoinedClient()) {
+            return;
+          }
+
+          try {
+            await client.subscribe(user, mediaType);
+          } catch (error) {
+            if (isActiveClient()) {
+              ToastUtils.error(getApiErrorMessage(error, "Unable to subscribe to the participant stream."));
+            }
+            return;
+          }
+
+          if (!isActiveJoinedClient()) {
+            return;
+          }
+
           setRemoteTracks((current) => {
             const existing = current.find((track) => track.uid === user.uid);
             const nextTrack = {
@@ -155,6 +182,10 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
         });
 
         client.on("user-unpublished", (user, mediaType) => {
+          if (!isActiveClient()) {
+            return;
+          }
+
           setRemoteTracks((current) =>
             current.map((track) =>
               track.uid === user.uid
@@ -169,6 +200,10 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
         });
 
         client.on("user-left", (user) => {
+          if (!isActiveClient()) {
+            return;
+          }
+
           setRemoteTracks((current) => current.filter((track) => track.uid !== user.uid));
         });
 
@@ -184,21 +219,35 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
           return;
         }
 
-        const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+        let audioTrack: ILocalAudioTrack | undefined;
+        let videoTrack: ICameraVideoTrack | undefined;
+
+        try {
+          [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+        } catch (error) {
+          ToastUtils.error(getApiErrorMessage(error, "Camera or microphone access was blocked."));
+          setMediaError("Camera or microphone access is blocked. Allow browser permissions, then use the controls below to try again.");
+          setMicEnabled(false);
+          setCameraEnabled(false);
+        }
+
         if (!isMounted || hasLeftRef.current) {
-          audioTrack.stop();
-          audioTrack.close();
-          videoTrack.stop();
-          videoTrack.close();
+          audioTrack?.stop();
+          audioTrack?.close();
+          videoTrack?.stop();
+          videoTrack?.close();
           await client.leave();
           return;
         }
 
         localTracksRef.current = { audio: audioTrack, video: videoTrack };
-        if (localVideoRef.current) {
+        if (videoTrack && localVideoRef.current) {
           videoTrack.play(localVideoRef.current);
         }
-        await client.publish([audioTrack, videoTrack]);
+        const tracksToPublish = [audioTrack, videoTrack].filter(Boolean) as ILocalTrack[];
+        if (tracksToPublish.length > 0) {
+          await client.publish(tracksToPublish);
+        }
 
         if (isMounted) {
           if (joinTimeout) {
@@ -253,16 +302,60 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
     }
   };
 
+  const ensureAudioTrack = async () => {
+    if (localTracksRef.current.audio) {
+      return localTracksRef.current.audio;
+    }
+
+    const AgoraRTC = (await import("agora-rtc-sdk-ng")).default;
+    const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+    localTracksRef.current.audio = audioTrack;
+    await clientRef.current?.publish(audioTrack);
+    return audioTrack;
+  };
+
+  const ensureVideoTrack = async () => {
+    if (localTracksRef.current.video) {
+      return localTracksRef.current.video;
+    }
+
+    const AgoraRTC = (await import("agora-rtc-sdk-ng")).default;
+    const videoTrack = await AgoraRTC.createCameraVideoTrack();
+    localTracksRef.current.video = videoTrack;
+    if (localVideoRef.current) {
+      localVideoRef.current.replaceChildren();
+      videoTrack.play(localVideoRef.current);
+    }
+    await clientRef.current?.publish(videoTrack);
+    return videoTrack;
+  };
+
   const toggleMic = async () => {
-    const nextValue = !micEnabled;
-    await localTracksRef.current.audio?.setEnabled(nextValue);
-    setMicEnabled(nextValue);
+    try {
+      const nextValue = !micEnabled;
+      const audioTrack = nextValue ? await ensureAudioTrack() : localTracksRef.current.audio;
+      await audioTrack?.setEnabled(nextValue);
+      setMicEnabled(nextValue);
+      setMediaError(null);
+    } catch (error) {
+      setMicEnabled(false);
+      setMediaError("Microphone access is still blocked. Allow it in the browser site settings and try again.");
+      ToastUtils.error(getApiErrorMessage(error, "Unable to access the microphone."));
+    }
   };
 
   const toggleCamera = async () => {
-    const nextValue = !cameraEnabled;
-    await localTracksRef.current.video?.setEnabled(nextValue);
-    setCameraEnabled(nextValue);
+    try {
+      const nextValue = !cameraEnabled;
+      const videoTrack = nextValue ? await ensureVideoTrack() : localTracksRef.current.video;
+      await videoTrack?.setEnabled(nextValue);
+      setCameraEnabled(nextValue);
+      setMediaError(null);
+    } catch (error) {
+      setCameraEnabled(false);
+      setMediaError("Camera access is still blocked. Allow it in the browser site settings and try again.");
+      ToastUtils.error(getApiErrorMessage(error, "Unable to access the camera."));
+    }
   };
 
   return (
@@ -315,6 +408,11 @@ export function AgoraMeeting({ joinDetails, participantLabel, onLeave }: AgoraMe
 
           <div className="rounded-[24px] border border-white/10 bg-white/[0.05] p-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Controls</p>
+            {mediaError && (
+              <p className="mt-3 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-3 text-sm font-semibold text-amber-100">
+                {mediaError}
+              </p>
+            )}
             <div className="mt-4 grid gap-2">
               <Button variant="secondary" className="rounded-2xl" onClick={toggleMic} disabled={isConnecting}>
                 {micEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
