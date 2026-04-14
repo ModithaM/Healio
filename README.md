@@ -4,7 +4,7 @@
 
 A microservices-based platform that leverages AI to streamline healthcare appointments and telemedicine services, connecting patients with doctors through a scalable and modular architecture.
 
-**Tech Stack:** Spring Boot (Backend Services) | React/Vue (Frontend) | Maven (Build)
+**Tech Stack:** Spring Boot (Backend Services) | Next.js (Frontend) | pnpm (Package Manager)
 
 ---
 
@@ -56,14 +56,32 @@ Healio/
 ### Prerequisites
 - **Java 17+** (for Spring Boot services)
 - **Maven 3.8+** (for building services)
-- **Node.js 18+** (for frontend development)
+- **Node.js 18+** and **pnpm** (for frontend development and package management)
+
+### Environment Setup
+
+Before starting the project, create environment files from the provided samples:
+
+#### Root environment:
+```bash
+cp sample.env .env
+```
+
+#### Client environment:
+```bash
+cp client/healio/sample.env.local client/healio/.env.local
+```
+
+Edit these files with your actual configuration values.
 
 ### Installation & Build
 
-#### Install all dependencies and build all services:
+#### Install all dependencies (services and client):
 ```bash
 pnpm run dependency
 ```
+
+This command installs both backend service dependencies (Maven) and frontend dependencies (pnpm).
 
 #### Build all Spring Boot services:
 ```bash
@@ -83,6 +101,11 @@ pnpm run dev
 #### Stop all running services:
 ```bash
 pnpm run stop
+```
+
+#### Run tests:
+```bash
+pnpm run test
 ```
 
 ### Individual Service Commands
