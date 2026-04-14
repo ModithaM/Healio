@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Activity,
   BarChart3,
-  Bell,
   CalendarCheck,
   CalendarClock,
   CheckCircle2,
@@ -41,6 +40,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { AgoraMeeting } from "@/components/telemedicine/AgoraMeeting";
 import { CreateSessionDialog } from "@/components/telemedicine/CreateSessionDialog";
 import { TelemedicineSessionTable } from "@/components/telemedicine/TelemedicineSessionTable";
@@ -506,10 +506,7 @@ function DashboardHeader({
                 <Video className="h-4 w-4" />
                 Create Session
               </Button>
-              <HeaderIconButton ariaLabel="Notifications">
-                <Bell className="h-5 w-5" />
-                <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white dark:ring-slate-950" />
-              </HeaderIconButton>
+              <NotificationBell dashboardHref="/doctor-dashboard" badgeClassName="bg-amber-400" />
               <HeaderIconButton ariaLabel="Toggle theme" onClick={onToggleDark}>
                 {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </HeaderIconButton>

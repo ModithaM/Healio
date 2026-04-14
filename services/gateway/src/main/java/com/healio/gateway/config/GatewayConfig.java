@@ -37,6 +37,10 @@ public class GatewayConfig {
                         .filters(f -> f.filter(filter))
                         .uri("lb://telemedicine-service"))
 
+                .route("notification-service", r -> r.path("/v1/api/notifications/**")
+                        .filters(f -> f.filter(filter))
+                        .uri("lb://notification-service"))
+
                 .route("auth-service", r -> r.path("/v1/auth/**")
                         .uri("lb://auth-service"))
 
