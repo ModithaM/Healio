@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -149,12 +148,11 @@ const DAY_SHORT: Record<string, string> = {
   THURSDAY: "Thu", FRIDAY: "Fri", SATURDAY: "Sat", SUNDAY: "Sun",
 };
 
-const formatTime = (t: string): string => {
+const formatTime = (t: string | number[]): string => {
   if (!t) return "";
-  // Handle "HH:mm:ss" → "HH:mm", or array [h,m,s] → "HH:mm"
-  if (Array.isArray(t as any)) {
-    const arr = t as any as number[];
-    return `${String(arr[0]).padStart(2, "0")}:${String(arr[1]).padStart(2, "0")}`;
+
+  if (Array.isArray(t)) {
+    return `${String(t[0]).padStart(2, "0")}:${String(t[1]).padStart(2, "0")}`;
   }
   return String(t).slice(0, 5);
 };
@@ -180,10 +178,13 @@ export default function DoctorDashboardPage() {
   const [availabilityModal, setAvailabilityModal] = useState<"add" | "edit" | null>(null);
   const [editingSlot, setEditingSlot] = useState<DoctorAvailabilityResponse | null>(null);
 
+  const userId = user?.userId;
   const loadDoctorData = useCallback(async () => {
-    if (!user?.userId) return;
+    if (!userId) return;
+
     setIsProfileLoading(true);
-    const result = await getDoctorProfileByUserId(user.userId);
+    const result = await getDoctorProfileByUserId(userId);
+
     if (result.success && result.data) {
       setDoctorProfile(result.data);
       setAvailabilitySlots(result.data.availabilitySlots || []);
@@ -191,11 +192,7 @@ export default function DoctorDashboardPage() {
       setProfileModal("create");
     }
     setIsProfileLoading(false);
-  }, [user?.userId]);
-
-  useEffect(() => {
-    loadDoctorData();
-  }, [loadDoctorData]);
+  }, [userId]);
 
   const handleProfileSuccess = () => {
     setProfileModal(null);
