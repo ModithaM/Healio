@@ -620,7 +620,7 @@ function ProfileSummary({
         ))}
       </div>
 
-      {profile && (
+      {profile ? (
         <div className="mt-5 flex gap-2.5 flex-col">
           <Button 
             onClick={onEditProfile}
@@ -638,6 +638,14 @@ function ProfileSummary({
             {isDeleteLoading ? "Deleting..." : "Delete Profile"}
           </Button>
         </div>
+      ) : (
+        <Button 
+          onClick={onEditProfile}
+          className="mt-5 w-full shrink-0 rounded-2xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white"
+        >
+          <Plus className="h-4 w-4" />
+          Complete Profile
+        </Button>
       )}
     </Card>
   );
