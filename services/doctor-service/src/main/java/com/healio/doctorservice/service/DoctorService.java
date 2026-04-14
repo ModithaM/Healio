@@ -79,6 +79,12 @@ public class DoctorService {
                 .collect(Collectors.toList());
     }
 
+    public List<DoctorProfileResponseDto> getDoctorsBySpecialization(String specialization) {
+        return doctorRepository.findAllBySpecializationIgnoreCase(specialization).stream()
+                .map(this::enrichDoctorResponse)
+                .collect(Collectors.toList());
+    }
+
     //private Helpers
     private DoctorProfileResponseDto enrichDoctorResponse(DoctorProfile doctor) {
         DoctorProfileResponseDto dto = modelMapper.map(doctor, DoctorProfileResponseDto.class);
