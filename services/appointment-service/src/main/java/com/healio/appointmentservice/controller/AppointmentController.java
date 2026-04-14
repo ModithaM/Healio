@@ -1,58 +1,111 @@
 package com.healio.appointmentservice.controller;
 
+import com.healio.appointmentservice.dto.*;
+import com.healio.appointmentservice.enums.AppointmentStatus;
+import com.healio.appointmentservice.request.AppointmentCreateRequest;
+import com.healio.appointmentservice.request.AppointmentStatusUpdateRequest;
+import com.healio.appointmentservice.request.AppointmentUpdateRequest;
+import com.healio.appointmentservice.request.PrescriptionCreateRequest;
+import com.healio.appointmentservice.service.AppointmentService;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v1/appointment-service/")
+@RequestMapping("/v1/appointment-service")
 @RequiredArgsConstructor
 public class AppointmentController {
-//    private final AdvertService advertService;
-//    private final ModelMapper modelMapper;
-//
-//    @PostMapping("/create")
-//    public ResponseEntity<AdvertDto> createAdvert(@Valid @RequestPart AdvertCreateRequest request,
-//                                                  @RequestPart(required = false) MultipartFile file) {
-//        return ResponseEntity.status(HttpStatus.CREATED)
-//                .body(modelMapper.map(advertService.createAdvert(request, file), AdvertDto.class));
-//    }
-//
-//    @GetMapping("/getAll")
-//    public ResponseEntity<List<AdvertDto>> getAll() {
-//        return ResponseEntity.ok(advertService.getAll().stream()
-//                .map(advert -> modelMapper.map(advert, AdvertDto.class)).toList());
-//    }
-//
-//    @GetMapping("/getAdvertById/{id}")
-//    public ResponseEntity<AdvertDto> getAdvertById(@PathVariable String id) {
-//        return ResponseEntity.ok(modelMapper.map(advertService.getAdvertById(id), AdvertDto.class));
-//    }
-//
-//    @GetMapping("/getAdvertsByUserId/{id}")
-//    public ResponseEntity<List<AdvertDto>> getAdvertsByUserId(@PathVariable String id,
-//                                                              @RequestParam Advertiser type) {
-//        return ResponseEntity.ok(advertService.getAdvertsByUserId(id, type).stream()
-//                .map(advert -> modelMapper.map(advert, AdvertDto.class)).toList());
-//    }
-//
-//    @PutMapping("/update")
-//    @PreAuthorize("hasRole('ADMIN') or @advertService.authorizeCheck(#request.id, principal)")
-//    public ResponseEntity<AdvertDto> updateAdvertById(@Valid @RequestPart AdvertUpdateRequest request,
-//                                                      @RequestPart(required = false) MultipartFile file) {
-//        return ResponseEntity.ok(modelMapper.map(advertService.updateAdvertById(request, file), AdvertDto.class));
-//    }
-//
-//    @DeleteMapping("/deleteAdvertById/{id}")
-//    @PreAuthorize("hasRole('ADMIN') or @advertService.authorizeCheck(#id, principal)")
-//    public ResponseEntity<Void> deleteAdvertById(@PathVariable String id) {
-//        advertService.deleteAdvertById(id);
-//        return ResponseEntity.ok().build();
-//    }
+	private final AppointmentService appointmentService;
+
+	@PostMapping("/appointments")
+	public ResponseEntity<AppointmentResponseDto> createAppointment(@Valid @RequestBody AppointmentCreateRequest request) {
+		return ResponseEntity.ok(appointmentService.createAppointment(request));
+	}
+
+	@GetMapping("/appointments")
+	public ResponseEntity<List<AppointmentResponseDto>> getAllAppointments() {
+		return ResponseEntity.ok(appointmentService.getAllAppointments());
+	}
+
+	@GetMapping("/appointments/{id}")
+	public ResponseEntity<AppointmentResponseDto> getAppointmentById(@PathVariable String id) {
+		return ResponseEntity.ok(appointmentService.getAppointmentById(id));
+	}
+
+	@GetMapping("/appointments/patient/{patientId}")
+	public ResponseEntity<List<AppointmentResponseDto>> getAppointmentsByPatientId(@PathVariable String patientId) {
+		return ResponseEntity.ok(appointmentService.getAppointmentsByPatientId(patientId));
+	}
+
+	@GetMapping("/appointments/doctor/{doctorId}")
+	public ResponseEntity<List<AppointmentResponseDto>> getAppointmentsByDoctorId(@PathVariable String doctorId) {
+		return ResponseEntity.ok(appointmentService.getAppointmentsByDoctorId(doctorId));
+	}
+
+	@GetMapping("/appointments/status/{status}")
+	public ResponseEntity<List<AppointmentResponseDto>> getAppointmentsByStatus(@PathVariable AppointmentStatus status) {
+		return ResponseEntity.ok(appointmentService.getAppointmentsByStatus(status));
+	}
+
+	@PutMapping("/appointments/{id}")
+	public ResponseEntity<AppointmentResponseDto> updateAppointment(
+			@PathVariable String id,
+			@Valid @RequestBody AppointmentUpdateRequest request) {
+		return ResponseEntity.ok(appointmentService.updateAppointment(id, request));
+	}
+
+	@PatchMapping("/appointments/{id}/status")
+	public ResponseEntity<AppointmentResponseDto> updateStatus(
+			@PathVariable String id,
+			@Valid @RequestBody AppointmentStatusUpdateRequest request) {
+		return ResponseEntity.ok(appointmentService.updateStatus(id, request));
+	}
+
+	@PatchMapping("/appointments/{id}/confirm")
+	public ResponseEntity<AppointmentResponseDto> confirmAppointment(@PathVariable String id) {
+		return ResponseEntity.ok(appointmentService.markConfirmed(id));
+	}
+
+	@PatchMapping("/appointments/{id}/complete")
+	public ResponseEntity<AppointmentResponseDto> completeAppointment(@PathVariable String id) {
+		return ResponseEntity.ok(appointmentService.markCompleted(id));
+	}
+
+	@PatchMapping("/appointments/{id}/no-show")
+	public ResponseEntity<AppointmentResponseDto> markNoShow(@PathVariable String id) {
+		return ResponseEntity.ok(appointmentService.markNoShow(id));
+	}
+
+	@DeleteMapping("/appointments/{id}")
+	public ResponseEntity<Void> deleteAppointment(@PathVariable String id) {
+		appointmentService.deleteAppointment(id);
+		return ResponseEntity.ok().build();
+	}
+
+	@PostMapping("/appointments/{id}/cancel")
+	public ResponseEntity<AppointmentResponseDto> cancelAppointment(
+			@PathVariable String id,
+			@RequestParam(required = false) String reason) {
+		return ResponseEntity.ok(appointmentService.cancelAppointment(id, reason));
+	}
+
+	@PostMapping("/appointments/{appointmentId}/prescriptions")
+	public ResponseEntity<PrescriptionResponseDto> createPrescription(
+			@PathVariable String appointmentId,
+			@Valid @RequestBody PrescriptionCreateRequest request) {
+		return ResponseEntity.ok(appointmentService.createPrescription(appointmentId, request));
+	}
+
+	@GetMapping("/appointments/{appointmentId}/prescription")
+	public ResponseEntity<PrescriptionResponseDto> getPrescriptionByAppointmentId(@PathVariable String appointmentId) {
+		return ResponseEntity.ok(appointmentService.getPrescriptionByAppointmentId(appointmentId));
+	}
+
+	@GetMapping("/prescriptions/patient/{patientId}")
+	public ResponseEntity<List<PrescriptionResponseDto>> getPrescriptionsByPatientId(@PathVariable String patientId) {
+		return ResponseEntity.ok(appointmentService.getPrescriptionsByPatientId(patientId));
+	}
 }
