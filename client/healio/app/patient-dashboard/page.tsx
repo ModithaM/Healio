@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Activity,
-  Bell,
   CalendarClock,
   CheckCircle2,
   ChevronDown,
@@ -38,6 +37,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { AgoraMeeting } from "@/components/telemedicine/AgoraMeeting";
 import { TelemedicineSessionTable } from "@/components/telemedicine/TelemedicineSessionTable";
 import { useTelemedicineSessions } from "@/hooks/useTelemedicineSessions";
@@ -474,10 +474,7 @@ function DashboardHeader({
                 <CalendarClock className="h-4 w-4" />
                 Book Appointment
               </Button>
-              <HeaderIconButton ariaLabel="Notifications">
-                <Bell className="h-5 w-5" />
-                <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-slate-950" />
-              </HeaderIconButton>
+              <NotificationBell dashboardHref="/patient-dashboard" badgeClassName="bg-emerald-400" />
               <HeaderIconButton ariaLabel="Toggle theme" onClick={onToggleDark}>
                 {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </HeaderIconButton>
@@ -554,7 +551,7 @@ function ProfileSummary({
     { label: "Blood Group", value: profile?.bloodGroup || defaultPatient.bloodGroup, icon: HeartPulse },
     { label: "Gender", value: profile?.gender ? profile.gender.charAt(0) + profile.gender.slice(1).toLowerCase() : defaultPatient.gender, icon: UserRound },
     { label: "Date of Birth", value: profile?.dateOfBirth || defaultPatient.age, icon: Activity },
-    { label: "Emergency Contact", value: profile?.emergencyContactName || defaultPatient.emergencyContact, icon: Bell },
+    { label: "Emergency Contact", value: profile?.emergencyContactName || defaultPatient.emergencyContact, icon: Phone },
   ];
 
   return (

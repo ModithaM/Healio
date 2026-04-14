@@ -13,7 +13,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 // 3. Auth service - core authentication
 // 4. User service - user management
 // 5. Patient & Doctor services - domain services
-// 6. Appointment & Telemedicine services - dependent services
+// 6. Appointment, Telemedicine & Notification services - dependent services
 // 7. Gateway - API entry point after routed services have registered
 const services = [
   { name: 'config-service', waitTime: 6000 },
@@ -24,6 +24,7 @@ const services = [
   { name: 'doctor-service', waitTime: 5000 },
   { name: 'appointment-service', waitTime: 5000 },
   { name: 'telemedicine-service', waitTime: 5000 },
+  { name: 'notification-service', waitTime: 5000 },
   { name: 'gateway', waitTime: 6000 }
 ];
 

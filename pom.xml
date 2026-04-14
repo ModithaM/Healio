@@ -17,6 +17,7 @@
         <module>services/user-service</module>
         <module>services/patient-service</module>
         <module>services/telemedicine-service</module>
+        <module>services/notification-service</module>
         <module>services/appointment-service</module>
         <module>services/gateway</module>
     </modules>
