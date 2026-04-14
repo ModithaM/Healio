@@ -66,7 +66,7 @@ export default function DoctorsManagementPage() {
       title="Doctors Management"
       description="Manage clinician profiles, specialties, availability, verification status, and hospital department coverage."
     >
-      <div className="grid grid-cols-1 gap-6 [grid-auto-flow:dense]">
+      <div className="grid grid-cols-1 gap-6 grid-flow-dense">
         <GlassCard>
           <SectionHeader
             title="Doctor List"
@@ -98,12 +98,12 @@ export default function DoctorsManagementPage() {
           />
 
           {isLoading ? (
-            <div className="flex min-h-[200px] items-center justify-center gap-3">
+            <div className="flex min-h-50 items-center justify-center gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-sky-500" />
               <p className="text-sm font-semibold text-slate-500">Loading doctors...</p>
             </div>
           ) : doctors.length === 0 ? (
-            <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 p-8 text-center dark:border-white/10">
+            <div className="flex min-h-50 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-200 p-8 text-center dark:border-white/10">
               <div className="grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 dark:bg-white/5">
                 <Stethoscope className="h-7 w-7 text-slate-400" />
               </div>
