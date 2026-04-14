@@ -572,10 +572,30 @@ function ProfileSummary({
   const displayName = user ? `${user.firstName} ${user.lastName}` : defaultPatient.name;
   const displayEmail = user?.email || defaultPatient.email;
 
+  const formatPatientId = (id: string) => {
+    if (!id) return "--";
+    return `#${id.slice(-6).toUpperCase()}`;
+  };
+
+  const formatBloodGroup = (bloodGroup: string) => {
+    if (!bloodGroup) return "--";
+    const bloodGroupMap: Record<string, string> = {
+      "O_POSITIVE": "O+",
+      "O_NEGATIVE": "O-",
+      "A_POSITIVE": "A+",
+      "A_NEGATIVE": "A-",
+      "B_POSITIVE": "B+",
+      "B_NEGATIVE": "B-",
+      "AB_POSITIVE": "AB+",
+      "AB_NEGATIVE": "AB-",
+    };
+    return bloodGroupMap[bloodGroup] || bloodGroup;
+  };
+
   const details = [
-    { label: "Patient ID", value: profile?.id || "--", icon: ShieldCheck },
+    { label: "Patient ID", value: profile?.id ? formatPatientId(profile.id) : "--", icon: ShieldCheck },
     { label: "Email", value: profile ? displayEmail : "--", icon: Mail },
-    { label: "Blood Group", value: profile?.bloodGroup || "--", icon: HeartPulse },
+    { label: "Blood Group", value: profile?.bloodGroup ? formatBloodGroup(profile.bloodGroup) : "--", icon: HeartPulse },
     { label: "Gender", value: profile?.gender ? profile.gender.charAt(0) + profile.gender.slice(1).toLowerCase() : "--", icon: UserRound },
     { label: "Date of Birth", value: profile?.dateOfBirth || "--", icon: Activity },
     { label: "Emergency Contact", value: profile?.emergencyContactName || "--", icon: Phone },
@@ -632,7 +652,7 @@ function ProfileSummary({
           <Button 
             onClick={onDeleteProfile}
             disabled={isDeleteLoading}
-            className="w-full shrink-0 rounded-2xl bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white disabled:opacity-50"
+            className="w-full shrink-0 rounded-2xl bg-red-600 hover:bg-red-800 dark:bg-red-700 dark:hover:bg-red-900 text-white disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
             {isDeleteLoading ? "Deleting..." : "Delete Profile"}
