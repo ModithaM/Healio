@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Plus, Stethoscope, UserRound, Video } from "lucide-react";
 
 import {
   activityFeed,
-  appointments,
   chartData,
   overviewStats,
   quickActions,
   telemedicineSessions,
 } from "../_components/admin-data";
+import { AppointmentResponse, getAllAppointments } from "@/service/appointmentApi";
 import {
   ActivityTimeline,
   AdminPage,
@@ -23,6 +24,30 @@ import {
 } from "../_components/admin-ui";
 
 export default function AdminOverviewPage() {
+  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+
+  useEffect(() => {
+    const loadAppointments = async () => {
+      const result = await getAllAppointments();
+      if (result.success) {
+        setAppointments(result.data ?? []);
+      }
+    };
+
+    void loadAppointments();
+  }, []);
+
+  const weeklyAppointmentCount = useMemo(() => {
+    const today = new Date();
+    const sevenDaysAgo = new Date(today);
+    sevenDaysAgo.setDate(today.getDate() - 7);
+
+    return appointments.filter((item) => {
+      const date = new Date(item.appointmentDate);
+      return !Number.isNaN(date.getTime()) && date >= sevenDaysAgo && date <= today;
+    }).length;
+  }, [appointments]);
+
   return (
     <AdminPage
       eyebrow="Overview"
@@ -38,7 +63,7 @@ export default function AdminOverviewPage() {
           <SectionHeader title="Appointment Trends" action={<span className="rounded-full bg-sky-500/12 px-3 py-1.5 text-xs font-bold text-sky-700 dark:text-sky-300">Last 7 days</span>} />
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-4xl font-bold">493</p>
+              <p className="text-4xl font-bold">{weeklyAppointmentCount}</p>
               <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">appointments scheduled this week</p>
             </div>
             <CalendarClock className="h-10 w-10 text-sky-500" />
@@ -50,15 +75,20 @@ export default function AdminOverviewPage() {
           <SectionHeader title="Recent Appointments" />
           <div className="grid gap-3">
             {appointments.slice(0, 3).map((item) => (
-              <div key={`${item.patient}-${item.time}`} className="rounded-2xl border border-slate-200/70 bg-white/60 p-3 dark:border-white/10 dark:bg-white/[0.05]">
-                <p className="font-bold">{item.patient}</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{item.doctor} · {item.time}</p>
+              <div key={item.id} className="rounded-2xl border border-slate-200/70 bg-white/60 p-3 dark:border-white/10 dark:bg-white/[0.05]">
+                <p className="font-bold">{item.patient?.userInfo?.firstName || "Patient"} {item.patient?.userInfo?.lastName || ""}</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{item.doctor?.userInfo?.firstName || "Doctor"} {item.doctor?.userInfo?.lastName || ""} · {item.appointmentTime}</p>
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-400">{item.type}</span>
-                  <StatusBadge status={item.status} />
+                  <span className="text-xs font-bold text-slate-400">{item.reason?.toLowerCase().includes("telemedicine") ? "Online" : "Offline"}</span>
+                  <StatusBadge status={item.status === "PENDING" ? "Scheduled" : item.status} />
                 </div>
               </div>
             ))}
+            {appointments.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-slate-300/70 bg-white/50 p-3 text-sm font-semibold text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
+                No appointments available.
+              </div>
+            )}
           </div>
         </GlassCard>
 

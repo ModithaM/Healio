@@ -56,6 +56,15 @@ import {
   getDoctorProfileByUserId,
 } from "@/service/doctorApi";
 import {
+  AppointmentResponse,
+  cancelAppointment,
+  completeAppointment,
+  confirmAppointment,
+  createPrescription,
+  getAppointmentsByDoctorId,
+  noShowAppointment,
+} from "@/service/appointmentApi";
+import {
   cancelTelemedicineSession,
   completeTelemedicineSession,
   deleteTelemedicineSession,
@@ -81,25 +90,12 @@ const stagger: Variants = {
   show: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } },
 };
 
-const stats = [
-  { label: "Today's Appointments", value: "16", helper: "4 telemedicine", icon: CalendarClock, accent: "from-sky-500 to-cyan-400" },
-  { label: "Pending Requests", value: "07", helper: "Needs review", icon: Timer, accent: "from-amber-500 to-orange-400" },
-  { label: "Completed Consultations", value: "1,284", helper: "+18 this week", icon: CheckCircle2, accent: "from-emerald-500 to-teal-400" },
-  { label: "Active Telemedicine", value: "02", helper: "Next in 12 min", icon: Video, accent: "from-indigo-500 to-blue-400" },
-];
-
 const actions = [
   { label: "Manage Availability", icon: CalendarCheck, description: "Update clinic and video slots" },
   { label: "View Appointments", icon: ClipboardPlus, description: "Review today's consultation queue" },
   { label: "Join Telemedicine", icon: Video, description: "Open active online session" },
   { label: "View Patient Reports", icon: FileHeart, description: "Check attached lab results" },
   { label: "Issue Prescription", icon: Pill, description: "Create a digital prescription" },
-];
-
-const patients = [
-  { name: "Hasindu Chanuka", date: "Apr 12, 2026", condition: "Cardiac follow-up", reports: 4 },
-  { name: "Nadia Perera", date: "Apr 11, 2026", condition: "Hypertension review", reports: 2 },
-  { name: "Maya Chen", date: "Apr 08, 2026", condition: "General cardiac screening", reports: 3 },
 ];
 
 const activities = [
@@ -137,6 +133,16 @@ export default function DoctorDashboardPage() {
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<TelemedicineSession | null>(null);
   const [meetingDetails, setMeetingDetails] = useState<MeetingJoinDetails | null>(null);
+  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentResponse | null>(null);
+  const [prescriptionDiagnosis, setPrescriptionDiagnosis] = useState("");
+  const [prescriptionNotes, setPrescriptionNotes] = useState("");
+  const [prescriptionMedicineName, setPrescriptionMedicineName] = useState("");
+  const [prescriptionDosage, setPrescriptionDosage] = useState("");
+  const [prescriptionFrequency, setPrescriptionFrequency] = useState("");
+  const [prescriptionDuration, setPrescriptionDuration] = useState("");
+  const [prescriptionInstructions, setPrescriptionInstructions] = useState("");
   const doctorId = user?.userId ?? "doctor-17";
   const { patients: patientOptions } = usePatients(true);
   const {
@@ -299,6 +305,93 @@ export default function DoctorDashboardPage() {
     }
   };
 
+  const loadAppointments = useCallback(async () => {
+    if (!doctorId) return;
+
+    setAppointmentsLoading(true);
+    const result = await getAppointmentsByDoctorId(doctorId);
+    if (result.success) {
+      setAppointments(result.data ?? []);
+    } else if (result.error) {
+      ToastUtils.error(result.error);
+    }
+    setAppointmentsLoading(false);
+  }, [doctorId]);
+
+  useEffect(() => {
+    if (!doctorId) return;
+    void loadAppointments();
+  }, [doctorId, loadAppointments]);
+
+  const handleAppointmentAction = async (
+    appointment: AppointmentResponse,
+    action: "confirm" | "complete" | "noShow" | "cancel",
+  ) => {
+    let result;
+    if (action === "confirm") {
+      result = await confirmAppointment(appointment.id);
+    } else if (action === "complete") {
+      result = await completeAppointment(appointment.id);
+    } else if (action === "noShow") {
+      result = await noShowAppointment(appointment.id);
+    } else {
+      const reason = window.prompt("Reason for cancellation (optional):") || undefined;
+      result = await cancelAppointment(appointment.id, reason);
+    }
+
+    if (result?.success) {
+      await loadAppointments();
+    }
+  };
+
+  const handleCreatePrescription = async () => {
+    if (!selectedAppointment) return;
+    if (!prescriptionDiagnosis || !prescriptionMedicineName || !prescriptionDosage || !prescriptionFrequency) {
+      ToastUtils.error("Please fill diagnosis and medication details.");
+      return;
+    }
+
+    const result = await createPrescription(selectedAppointment.id, {
+      diagnosis: prescriptionDiagnosis,
+      notes: prescriptionNotes || undefined,
+      items: [
+        {
+          medicineName: prescriptionMedicineName,
+          dosage: prescriptionDosage,
+          frequency: prescriptionFrequency,
+          duration: prescriptionDuration || undefined,
+          instructions: prescriptionInstructions || undefined,
+        },
+      ],
+    });
+
+    if (result.success) {
+      setSelectedAppointment(null);
+      setPrescriptionDiagnosis("");
+      setPrescriptionNotes("");
+      setPrescriptionMedicineName("");
+      setPrescriptionDosage("");
+      setPrescriptionFrequency("");
+      setPrescriptionDuration("");
+      setPrescriptionInstructions("");
+      await loadAppointments();
+    }
+  };
+
+  const dashboardStats = useMemo(() => {
+    const pending = appointments.filter((item) => item.status === "PENDING").length;
+    const completed = appointments.filter((item) => item.status === "COMPLETED").length;
+    const today = appointments.filter((item) => item.appointmentDate === new Date().toISOString().slice(0, 10)).length;
+    const activeTelemedicine = telemedicineSessions.filter((item) => item.status === "ONGOING").length;
+
+    return [
+      { label: "Today's Appointments", value: String(today).padStart(2, "0"), helper: "Scheduled today", icon: CalendarClock, accent: "from-sky-500 to-cyan-400" },
+      { label: "Pending Requests", value: String(pending).padStart(2, "0"), helper: "Needs review", icon: Timer, accent: "from-amber-500 to-orange-400" },
+      { label: "Completed Consultations", value: String(completed).padStart(2, "0"), helper: "Care completed", icon: CheckCircle2, accent: "from-emerald-500 to-teal-400" },
+      { label: "Active Telemedicine", value: String(activeTelemedicine).padStart(2, "0"), helper: "Live rooms now", icon: Video, accent: "from-indigo-500 to-blue-400" },
+    ];
+  }, [appointments, telemedicineSessions]);
+
   return (
     <div className={cn(isDark && "dark")}>
       <main className="min-h-screen overflow-hidden bg-[#f4f9fc] text-slate-950 transition-colors duration-500 dark:bg-[#020817] dark:text-white [&_a]:cursor-pointer [&_button]:cursor-pointer">
@@ -333,14 +426,25 @@ export default function DoctorDashboardPage() {
 
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-9">
               <div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {stats.map((stat) => (
+                {dashboardStats.map((stat) => (
                   <StatCard key={stat.label} {...stat} />
                 ))}
               </div>
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-9">
-              <QuickActions />
+              <QuickActions
+                onViewAppointments={() => {
+                  document.getElementById("appointment-management")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                onIssuePrescription={() => {
+                  if (!appointments[0]) {
+                    ToastUtils.error("No appointment is available to attach a prescription.");
+                    return;
+                  }
+                  setSelectedAppointment(appointments[0]);
+                }}
+              />
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-8">
@@ -369,7 +473,15 @@ export default function DoctorDashboardPage() {
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-5">
-              <PatientRecordsPreview />
+              <AppointmentManagement
+                appointments={appointments}
+                isLoading={appointmentsLoading}
+                onConfirm={(appointment) => void handleAppointmentAction(appointment, "confirm")}
+                onComplete={(appointment) => void handleAppointmentAction(appointment, "complete")}
+                onNoShow={(appointment) => void handleAppointmentAction(appointment, "noShow")}
+                onCancel={(appointment) => void handleAppointmentAction(appointment, "cancel")}
+                onIssuePrescription={(appointment) => setSelectedAppointment(appointment)}
+              />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-7">
               <TelemedicineSessions
@@ -383,7 +495,15 @@ export default function DoctorDashboardPage() {
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-4">
-              <ProductivityShortcuts />
+              <ProductivityShortcuts
+                onIssuePrescription={() => {
+                  if (!appointments[0]) {
+                    ToastUtils.error("No appointment is available to attach a prescription.");
+                    return;
+                  }
+                  setSelectedAppointment(appointments[0]);
+                }}
+              />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-8">
               <PerformanceActivity />
@@ -442,6 +562,35 @@ export default function DoctorDashboardPage() {
               void refetchTelemedicineSessions();
             }}
           />
+        )}
+        {selectedAppointment && (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
+            <div className="w-full max-w-xl rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+              <h3 className="text-xl font-bold">Create Prescription</h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Appointment: {selectedAppointment.id}</p>
+              <div className="mt-4 grid gap-3">
+                <input value={prescriptionDiagnosis} onChange={(event) => setPrescriptionDiagnosis(event.target.value)} placeholder="Diagnosis" className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-slate-800" />
+                <textarea value={prescriptionNotes} onChange={(event) => setPrescriptionNotes(event.target.value)} placeholder="Notes" className="min-h-20 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-slate-800" />
+                <input value={prescriptionMedicineName} onChange={(event) => setPrescriptionMedicineName(event.target.value)} placeholder="Medicine name" className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-slate-800" />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input value={prescriptionDosage} onChange={(event) => setPrescriptionDosage(event.target.value)} placeholder="Dosage" className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-slate-800" />
+                  <input value={prescriptionFrequency} onChange={(event) => setPrescriptionFrequency(event.target.value)} placeholder="Frequency" className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-slate-800" />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input value={prescriptionDuration} onChange={(event) => setPrescriptionDuration(event.target.value)} placeholder="Duration" className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-slate-800" />
+                  <input value={prescriptionInstructions} onChange={(event) => setPrescriptionInstructions(event.target.value)} placeholder="Instructions" className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-slate-800" />
+                </div>
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <Button variant="outline" className="rounded-2xl" onClick={() => setSelectedAppointment(null)}>
+                  Close
+                </Button>
+                <Button className="rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500" onClick={() => void handleCreatePrescription()}>
+                  Save Prescription
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>
@@ -712,7 +861,13 @@ function StatCard({ label, value, helper, icon: Icon, accent }: { label: string;
 }
 
 // quick Actions
-function QuickActions() {
+function QuickActions({
+  onViewAppointments,
+  onIssuePrescription,
+}: {
+  onViewAppointments: () => void;
+  onIssuePrescription: () => void;
+}) {
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <SectionTitle eyebrow="Quick actions" title="Clinical productivity shortcuts" />
@@ -720,6 +875,14 @@ function QuickActions() {
         {actions.map((action) => (
           <button
             key={action.label}
+            onClick={() => {
+              if (action.label === "View Appointments") {
+                onViewAppointments();
+              }
+              if (action.label === "Issue Prescription") {
+                onIssuePrescription();
+              }
+            }}
             className="group h-full flex flex-col rounded-[24px] border border-slate-200/70 bg-white/68 p-4 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:border-sky-300 hover:bg-sky-50/80 hover:shadow-xl hover:shadow-sky-500/10 dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-sky-400/10"
           >
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25 transition group-hover:scale-105">
@@ -925,35 +1088,72 @@ function AvailabilityManagement({
 }
 
 //Patient Records review
-function PatientRecordsPreview() {
+function AppointmentManagement({
+  appointments,
+  isLoading,
+  onConfirm,
+  onComplete,
+  onNoShow,
+  onCancel,
+  onIssuePrescription,
+}: {
+  appointments: AppointmentResponse[];
+  isLoading: boolean;
+  onConfirm: (appointment: AppointmentResponse) => void;
+  onComplete: (appointment: AppointmentResponse) => void;
+  onNoShow: (appointment: AppointmentResponse) => void;
+  onCancel: (appointment: AppointmentResponse) => void;
+  onIssuePrescription: (appointment: AppointmentResponse) => void;
+}) {
   return (
-    <Card className="h-full flex flex-col rounded-[28px] p-5">
-      <SectionTitle eyebrow="Patient records" title="Recently consulted patients" />
+    <Card id="appointment-management" className="h-full flex flex-col rounded-[28px] p-5">
+      <SectionTitle eyebrow="Appointments" title="Consultation queue" />
       <div className="mt-5 grid gap-3.5">
-        {patients.map((patient) => (
-          <div key={patient.name} className="rounded-[26px] border border-slate-200/70 bg-white/62 p-4 transition duration-300 hover:-translate-y-1 hover:border-sky-300 hover:shadow-xl hover:shadow-sky-500/10 dark:border-white/10 dark:bg-white/[0.05]">
+        {isLoading && (
+          <div className="rounded-[22px] border border-slate-200/70 bg-white/62 p-4 text-sm font-semibold text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
+            Loading appointments...
+          </div>
+        )}
+        {!isLoading && appointments.length === 0 && (
+          <div className="rounded-[22px] border border-dashed border-sky-300 bg-sky-50/70 p-4 text-sm font-semibold text-slate-500 dark:border-sky-300/30 dark:bg-sky-400/10 dark:text-slate-300">
+            No appointments assigned yet.
+          </div>
+        )}
+        {appointments.slice(0, 6).map((appointment) => (
+          <div key={appointment.id} className="rounded-[26px] border border-slate-200/70 bg-white/62 p-4 transition duration-300 hover:-translate-y-1 hover:border-sky-300 hover:shadow-xl hover:shadow-sky-500/10 dark:border-white/10 dark:bg-white/[0.05]">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-sky-100 to-emerald-100 text-sky-600 dark:from-sky-500/20 dark:to-emerald-500/20 dark:text-sky-300">
                   <UserRound className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold">{patient.name}</h3>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{patient.condition}</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-400">Last consultation: {patient.date}</p>
+                  <h3 className="font-bold">
+                    {appointment.patient?.userInfo?.firstName || "Patient"} {appointment.patient?.userInfo?.lastName || ""}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{appointment.reason || "General consultation"}</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-400">{appointment.appointmentDate} at {appointment.appointmentTime}</p>
                 </div>
               </div>
-              <span className="rounded-full bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-300">{patient.reports} reports</span>
+              <span className={cn(
+                "rounded-full px-3 py-1.5 text-xs font-bold",
+                appointment.status === "CANCELLED"
+                  ? "bg-rose-500/12 text-rose-700 dark:text-rose-300"
+                  : appointment.status === "COMPLETED"
+                    ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+                    : appointment.status === "CONFIRMED"
+                      ? "bg-sky-500/12 text-sky-700 dark:text-sky-300"
+                      : "bg-amber-500/12 text-amber-700 dark:text-amber-300",
+              )}>{appointment.status}</span>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button variant="outline" className="rounded-2xl">
-                <FileText className="h-4 w-4" />
-                View Reports
+              <Button variant="outline" className="rounded-2xl" onClick={() => onConfirm(appointment)}>Confirm</Button>
+              <Button variant="outline" className="rounded-2xl" onClick={() => onComplete(appointment)}>Complete</Button>
+              <Button variant="outline" className="rounded-2xl" onClick={() => onNoShow(appointment)}>No-show</Button>
+              <Button variant="outline" className="rounded-2xl" onClick={() => onIssuePrescription(appointment)}>
+                <Pill className="h-4 w-4" />
+                Issue Prescription
               </Button>
-              <Button variant="outline" className="rounded-2xl">
-                <NotebookPen className="h-4 w-4" />
-                View Notes
-              </Button>
+              <Button variant="outline" className="rounded-2xl text-rose-500" onClick={() => onCancel(appointment)}>Cancel</Button>
             </div>
           </div>
         ))}
@@ -1090,7 +1290,7 @@ function TelemedicineSessions({
 }
 
 //Productivity Shortcuts
-function ProductivityShortcuts() {
+function ProductivityShortcuts({ onIssuePrescription }: { onIssuePrescription: () => void }) {
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <SectionTitle eyebrow="Consultation tools" title="Notes and prescriptions" />
@@ -1106,13 +1306,14 @@ function ProductivityShortcuts() {
           title="Issue digital prescription"
           description="Create medication plans with dosage, refills, and patient instructions in a focused workflow."
           action="Create Prescription"
+          onClick={onIssuePrescription}
         />
       </div>
     </Card>
   );
 }
 
-function ShortcutCard({ icon: Icon, title, description, action }: { icon: Icon; title: string; description: string; action: string }) {
+function ShortcutCard({ icon: Icon, title, description, action, onClick }: { icon: Icon; title: string; description: string; action: string; onClick?: () => void }) {
   return (
     <div className="rounded-[24px] border border-slate-200/70 bg-white/64 p-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-500/10 dark:border-white/10 dark:bg-white/[0.05]">
       <div className="flex items-start gap-4">
@@ -1122,7 +1323,7 @@ function ShortcutCard({ icon: Icon, title, description, action }: { icon: Icon; 
         <div>
           <h3 className="text-lg font-bold">{title}</h3>
           <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p>
-          <Button variant="outline" className="mt-4 rounded-2xl">
+          <Button variant="outline" className="mt-4 rounded-2xl" onClick={onClick}>
             {action}
           </Button>
         </div>
