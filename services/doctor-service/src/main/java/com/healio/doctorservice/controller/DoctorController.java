@@ -3,6 +3,7 @@ package com.healio.doctorservice.controller;
 import com.healio.doctorservice.dto.*;
 import com.healio.doctorservice.service.DoctorService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,13 +12,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v1/doctor-service/")
+@RequiredArgsConstructor
 public class DoctorController {
 
     private final DoctorService doctorService;
-
-    public DoctorController(DoctorService doctorService) {
-        this.doctorService = doctorService;
-    }
 
     // doctor profile endpoints
     @PostMapping("/create")
