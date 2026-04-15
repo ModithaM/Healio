@@ -235,11 +235,13 @@ export function StatusBadge({ status }: { status: string }) {
   const tone =
     status === "Completed" || status === "Active" || status === "Verified" || status === "Healthy" || status === "Live"
       ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
-      : status === "Scheduled" || status === "Upcoming"
+      : status === "CONFIRMED" || status === "Scheduled" || status === "Upcoming"
         ? "bg-sky-500/12 text-sky-700 dark:text-sky-300"
-        : status === "Warning" || status === "Review"
+        : status === "PENDING" || status === "Warning" || status === "Review"
           ? "bg-amber-500/12 text-amber-700 dark:text-amber-300"
-          : "bg-rose-500/12 text-rose-700 dark:text-rose-300";
+          : status === "CANCELLED" || status === "NO_SHOW"
+            ? "bg-rose-500/12 text-rose-700 dark:text-rose-300"
+            : "bg-rose-500/12 text-rose-700 dark:text-rose-300";
 
   return <span className={cn("rounded-full px-3 py-1.5 text-xs font-bold", tone)}>{status}</span>;
 }
