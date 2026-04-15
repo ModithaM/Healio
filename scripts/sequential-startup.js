@@ -25,6 +25,7 @@ const services = [
   { name: 'appointment-service', waitTime: 5000 },
   { name: 'telemedicine-service', waitTime: 5000 },
   { name: 'notification-service', waitTime: 5000 },
+  { name: 'symptom-checker-service', waitTime: 5000 },
   { name: 'gateway', waitTime: 6000 }
 ];
 

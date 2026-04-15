@@ -20,6 +20,7 @@
         <module>services/notification-service</module>
         <module>services/appointment-service</module>
         <module>services/gateway</module>
+        <module>services/symptom-checker-service</module>
     </modules>
 
     <parent>
