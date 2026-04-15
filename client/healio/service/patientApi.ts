@@ -20,11 +20,13 @@ export interface PatientProfileResponse extends PatientProfileData {
     fileUrl: string;
   }>;
   userInfo?: {
-    userId: string;
+    id: string;
     username: string;
-    firstName: string;
-    lastName: string;
     email: string;
+    userDetails?: {
+      firstName: string;
+      lastName: string;
+    };
   };
 }
 
@@ -124,6 +126,19 @@ export const deletePatientProfile = async (
     return { success: true };
   } catch (error) {
     const message = getErrorMessage(error, "Failed to delete patient profile. Please try again.");
+    ToastUtils.error(message);
+    return { success: false, error: message };
+  }
+};
+
+export const getAllPatients = async (): Promise<apiResponse<PatientProfileResponse[]>> => {
+  try {
+    const response = await privateAxios.get<PatientProfileResponse[]>(
+      "/patient-service/getAll"
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    const message = getErrorMessage(error, "Failed to fetch patients.");
     ToastUtils.error(message);
     return { success: false, error: message };
   }
