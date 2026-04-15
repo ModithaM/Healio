@@ -312,3 +312,64 @@ export const getPrescriptionsByPatientId = async (
     return { success: false, error: message };
   }
 };
+
+export interface PaginatedResponse<T> {
+  content: T[];
+  pageNumber: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  isLast: boolean;
+  isFirst: boolean;
+}
+
+export const getAppointmentsByPatientIdPaginated = async (
+  patientId: string,
+  page: number = 0,
+  size: number = 10,
+): Promise<apiResponse<PaginatedResponse<AppointmentResponse>>> => {
+  try {
+    const response = await privateAxios.get<PaginatedResponse<AppointmentResponse>>(
+      `/appointment-service/appointments/patient/${patientId}/paginated`,
+      { params: { page, size } },
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    const message = getErrorMessage(error, "Failed to fetch patient appointments.");
+    return { success: false, error: message };
+  }
+};
+
+export const getAppointmentsByDoctorIdPaginated = async (
+  doctorId: string,
+  page: number = 0,
+  size: number = 10,
+): Promise<apiResponse<PaginatedResponse<AppointmentResponse>>> => {
+  try {
+    const response = await privateAxios.get<PaginatedResponse<AppointmentResponse>>(
+      `/appointment-service/appointments/doctor/${doctorId}/paginated`,
+      { params: { page, size } },
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    const message = getErrorMessage(error, "Failed to fetch doctor appointments.");
+    return { success: false, error: message };
+  }
+};
+
+export const getPrescriptionsByPatientIdPaginated = async (
+  patientId: string,
+  page: number = 0,
+  size: number = 10,
+): Promise<apiResponse<PaginatedResponse<PrescriptionResponse>>> => {
+  try {
+    const response = await privateAxios.get<PaginatedResponse<PrescriptionResponse>>(
+      `/appointment-service/prescriptions/patient/${patientId}/paginated`,
+      { params: { page, size } },
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    const message = getErrorMessage(error, "Failed to fetch prescriptions.");
+    return { success: false, error: message };
+  }
+};
