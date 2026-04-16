@@ -5,6 +5,7 @@ import com.healio.appointmentservice.enums.AppointmentStatus;
 import com.healio.appointmentservice.request.AppointmentCreateRequest;
 import com.healio.appointmentservice.request.AppointmentStatusUpdateRequest;
 import com.healio.appointmentservice.request.AppointmentUpdateRequest;
+import com.healio.appointmentservice.request.PayPalCaptureRequest;
 import com.healio.appointmentservice.request.PrescriptionCreateRequest;
 import com.healio.appointmentservice.service.AppointmentService;
 import lombok.RequiredArgsConstructor;
@@ -128,6 +129,18 @@ public class AppointmentController {
                         @PathVariable String id,
                         @RequestParam(required = false) String reason) {
                 return ResponseEntity.ok(appointmentService.cancelAppointment(id, reason));
+        }
+
+        @PostMapping("/appointments/{id}/payments/paypal/order")
+        public ResponseEntity<PayPalOrderResponseDto> createPayPalOrder(@PathVariable String id) {
+                return ResponseEntity.ok(appointmentService.createPayPalOrder(id));
+        }
+
+        @PostMapping("/appointments/{id}/payments/paypal/capture")
+        public ResponseEntity<AppointmentResponseDto> capturePayPalOrder(
+                        @PathVariable String id,
+                        @Valid @RequestBody PayPalCaptureRequest request) {
+                return ResponseEntity.ok(appointmentService.capturePayPalOrder(id, request.getOrderId()));
         }
 
         @PostMapping("/appointments/{appointmentId}/prescriptions")
