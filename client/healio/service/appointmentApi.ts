@@ -5,6 +5,7 @@ import { apiResponse } from "@/types/common";
 import ToastUtils from "@/utils/toastUtils";
 
 export type AppointmentStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
+export type PaymentStatus = "UNPAID" | "PENDING" | "PAID" | "FAILED";
 
 export interface PrescriptionItemPayload {
   medicineName: string;
@@ -41,6 +42,12 @@ export interface AppointmentResponse {
   status: AppointmentStatus;
   reason?: string;
   cancelReason?: string;
+  consultationFee?: number;
+  currency?: string;
+  paymentStatus?: PaymentStatus;
+  paypalOrderId?: string;
+  paypalCaptureId?: string;
+  paymentTimestamp?: string;
   patient?: {
     userInfo?: {
       firstName?: string;
@@ -67,6 +74,8 @@ export interface CreateAppointmentPayload {
   appointmentDate: string;
   appointmentTime: string;
   reason?: string;
+  consultationFee?: number;
+  currency?: string;
 }
 
 export interface UpdateAppointmentPayload {
@@ -85,6 +94,16 @@ export interface CreatePrescriptionPayload {
   notes?: string;
   issuedDate?: string;
   items: PrescriptionItemPayload[];
+}
+
+export interface PayPalOrderResponse {
+  appointmentId: string;
+  orderId: string;
+  orderStatus: string;
+  approveUrl: string;
+  amount: number;
+  currency: string;
+  paymentStatus: PaymentStatus;
 }
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
@@ -262,6 +281,37 @@ export const deleteAppointment = async (id: string): Promise<apiResponse<void>> 
     return { success: true };
   } catch (error) {
     const message = getErrorMessage(error, "Failed to delete appointment.");
+    ToastUtils.error(message);
+    return { success: false, error: message };
+  }
+};
+
+export const createPayPalOrder = async (appointmentId: string): Promise<apiResponse<PayPalOrderResponse>> => {
+  try {
+    const response = await privateAxios.post<PayPalOrderResponse>(
+      `/appointment-service/appointments/${appointmentId}/payments/paypal/order`,
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    const message = getErrorMessage(error, "Failed to create PayPal order.");
+    ToastUtils.error(message);
+    return { success: false, error: message };
+  }
+};
+
+export const capturePayPalOrder = async (
+  appointmentId: string,
+  orderId: string,
+): Promise<apiResponse<AppointmentResponse>> => {
+  try {
+    const response = await privateAxios.post<AppointmentResponse>(
+      `/appointment-service/appointments/${appointmentId}/payments/paypal/capture`,
+      { orderId },
+    );
+    ToastUtils.success("Payment captured successfully.");
+    return { success: true, data: response.data };
+  } catch (error) {
+    const message = getErrorMessage(error, "Failed to capture PayPal payment.");
     ToastUtils.error(message);
     return { success: false, error: message };
   }
