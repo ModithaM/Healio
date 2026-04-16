@@ -1,0 +1,63 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: healio
+
+resources:
+  - ../../base
+  - ../../database
+  - ../../services/config-service
+  - ../../services/discovery-service
+  - ../../services/auth-service
+  - ../../services/user-service
+  - ../../services/patient-service
+  - ../../services/doctor-service
+  - ../../services/appointment-service
+  - ../../services/telemedicine-service
+  - ../../services/notification-service
+  - ../../services/symptom-checker-service
+  - ../../services/gateway
+  - ../../frontend
+
+# Production-specific labels
+commonLabels:
+  environment: production
+
+# Patches for production environment - high availability
+replicas:
+  - name: config-service
+    count: 3
+  - name: discovery-service
+    count: 3
+  - name: gateway
+    count: 3
+  - name: frontend
+    count: 3
+  - name: auth-service
+    count: 3
+  - name: user-service
+    count: 3
+  - name: patient-service
+    count: 3
+  - name: doctor-service
+    count: 3
+  - name: appointment-service
+    count: 3
+  - name: telemedicine-service
+    count: 3
+  - name: notification-service
+    count: 3
+  - name: symptom-checker-service
+    count: 3
+
+# Override config for production
+configMapGenerator:
+  - name: healio-config
+    behavior: merge
+    literals:
+      - LOGGING_LEVEL_ROOT=WARN
+      - LOGGING_LEVEL_COM_HEALIO=INFO
+
+# Production security - enforce pod security standards
+patchesStrategicMerge:
+  - pod_security_patch.yaml

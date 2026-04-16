@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-service
+  namespace: healio
+  labels:
+    app: config-service
+    component: infrastructure
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-service
+  template:
+    metadata:
+      labels:
+        app: config-service
+        component: infrastructure
+    spec:
+      containers:
+      - name: config-service
+        image: config-service:0.0.1-SNAPSHOT
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8888
+          name: http
+          protocol: TCP
+        env:
+        - name: SPRING_APPLICATION_NAME
+          value: "config-service"
+        - name: SERVER_PORT
+          value: "8888"
+        - name: SPRING_PROFILES_ACTIVE
+          value: "k8s"
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: healio-secrets
+              key: GIT_USERNAME
+              optional: true
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: healio-secrets
+              key: GIT_PASSWORD
+              optional: true
+        - name: GIT_REPO
+          valueFrom:
+            secretKeyRef:
+              name: healio-secrets
+              key: GIT_REPO
+              optional: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8888
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8888
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-service
+  namespace: healio
+  labels:
+    app: config-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: config-service
+  ports:
+  - port: 8888
+    targetPort: 8888
+    protocol: TCP
+    name: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: config-service-pdb
+  namespace: healio
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: config-service
