@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import {
   Activity,
+  Brain,
   CalendarClock,
   CheckCircle2,
   ChevronDown,
@@ -65,6 +66,8 @@ import {
 } from "@/service/appointmentApi";
 import type { MeetingJoinDetails, TelemedicineSession } from "@/types/telemedicine/types";
 import ToastUtils from "@/utils/toastUtils";
+import { analyzeSymptoms } from "@/service/symptomCheckerApi";
+import type { SymptomAnalysisResponse } from "@/types/symptom-checker/types";
 
 type Icon = ComponentType<{ className?: string }>;
 
@@ -98,6 +101,7 @@ const actions = [
   { label: "Upload Medical Report", icon: UploadCloud, description: "Add lab reports or scans" },
   { label: "View Prescriptions", icon: Pill, description: "Check recent medicine plans" },
   { label: "Update Profile", icon: Edit3, description: "Keep health details current" },
+  { label: "AI Symptom Checker", icon: Brain, description: "Describe symptoms for AI health guidance" },
 ];
 
 const reports = [
@@ -125,6 +129,7 @@ export default function PatientDashboardPage() {
   const [selectedPrescription, setSelectedPrescription] = useState<PrescriptionResponse | null>(null);
   const [doctorOptions, setDoctorOptions] = useState<Array<{ id: string; name: string }>>([]);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isSymptomCheckerOpen, setIsSymptomCheckerOpen] = useState(false);
   const [payingAppointment, setPayingAppointment] = useState<AppointmentResponse | null>(null);
   const [isAppointmentsLoading, setIsAppointmentsLoading] = useState(false);
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
@@ -395,6 +400,7 @@ export default function PatientDashboardPage() {
                 onViewPrescriptions={() => {
                   document.getElementById("patient-prescriptions")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
+                onOpenSymptomChecker={() => setIsSymptomCheckerOpen(true)}
               />
             </motion.div>
 
@@ -460,6 +466,12 @@ export default function PatientDashboardPage() {
           <PrescriptionDetailsModal
             prescription={selectedPrescription}
             onClose={() => setSelectedPrescription(null)}
+          />
+        )}
+        {isSymptomCheckerOpen && (
+          <SymptomCheckerModal
+            userId={user?.userId ?? ""}
+            onClose={() => setIsSymptomCheckerOpen(false)}
           />
         )}
       </main>
@@ -716,10 +728,12 @@ function QuickActions({
   onEditProfile,
   onBookAppointment,
   onViewPrescriptions,
+  onOpenSymptomChecker,
 }: {
   onEditProfile?: () => void;
   onBookAppointment?: () => void;
   onViewPrescriptions?: () => void;
+  onOpenSymptomChecker?: () => void;
 }) {
   const handleActionClick = (label: string) => {
     if (label === "Update Profile" && onEditProfile) {
@@ -730,6 +744,9 @@ function QuickActions({
     }
     if (label === "View Prescriptions" && onViewPrescriptions) {
       onViewPrescriptions();
+    }
+    if (label === "AI Symptom Checker" && onOpenSymptomChecker) {
+      onOpenSymptomChecker();
     }
   };
 
@@ -1381,5 +1398,222 @@ function HeaderIconButton({
     >
       {children}
     </button>
+  );
+}
+
+const urgencyConfig: Record<string, { label: string; color: string; bg: string }> = {
+  ROUTINE:   { label: "Routine",   color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-500/10" },
+  SOON:      { label: "See a Doctor Soon", color: "text-amber-700 dark:text-amber-300",  bg: "bg-amber-500/10"  },
+  URGENT:    { label: "Urgent",    color: "text-orange-700 dark:text-orange-300", bg: "bg-orange-500/10" },
+  EMERGENCY: { label: "Emergency", color: "text-rose-700 dark:text-rose-300",   bg: "bg-rose-500/10"   },
+};
+
+function SymptomCheckerModal({
+  userId,
+  onClose,
+}: {
+  userId: string;
+  result?: SymptomAnalysisResponse | null;
+  onResult?: (result: SymptomAnalysisResponse) => void;
+  onClose: () => void;
+}) {
+  const [symptoms, setSymptoms] = useState("");
+  const [additionalInfo, setAdditionalInfo] = useState("");
+  const [patientAge, setPatientAge] = useState("");
+  const [patientGender, setPatientGender] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [localResult, setLocalResult] = useState<SymptomAnalysisResponse | null>(null);
+
+  const handleAnalyze = async () => {
+    if (!symptoms.trim() || symptoms.trim().length < 10) {
+      ToastUtils.error("Please describe your symptoms in at least 10 characters.");
+      return;
+    }
+    setIsAnalyzing(true);
+    const response = await analyzeSymptoms({
+      userId,
+      symptoms: symptoms.trim(),
+      additionalInfo: additionalInfo.trim() || undefined,
+      patientAge: patientAge ? parseInt(patientAge, 10) : undefined,
+      patientGender: patientGender || undefined,
+    });
+    setIsAnalyzing(false);
+    if (response.success && response.data) {
+      setLocalResult(response.data);
+    }
+  };
+
+  const handleCheckAgain = () => {
+    setLocalResult(null);
+    setSymptoms("");
+    setAdditionalInfo("");
+    setPatientAge("");
+    setPatientGender("");
+  };
+
+  const result = localResult;
+  const urgency = result ? (urgencyConfig[result.urgencyLevel] ?? urgencyConfig.ROUTINE) : null;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
+      <div className="flex w-full max-w-2xl flex-col rounded-3xl border border-white/20 bg-white shadow-2xl dark:border-white/10 dark:bg-slate-900 max-h-[90vh] overflow-y-auto">
+
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 p-6 pb-4 border-b border-slate-100 dark:border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-sky-500 to-emerald-500 text-white shadow-lg shadow-sky-500/25">
+              <Brain className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold">AI Symptom Checker</h3>
+            </div>
+          </div>
+          <Button variant="outline" size="icon" className="rounded-2xl shrink-0" onClick={onClose}>
+            <XCircle className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <div className="p-6 flex flex-col gap-5">
+          {!result ? (
+            /* Input Form */
+            <>
+              <div className="flex flex-col gap-3">
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                  Describe your symptoms <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  value={symptoms}
+                  onChange={(e) => setSymptoms(e.target.value)}
+                  placeholder="e.g. I have had a persistent headache for 2 days, mild fever around 38°C, and a sore throat..."
+                  rows={4}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-200/40 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100 dark:focus:ring-sky-400/10"
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-200">Age (optional)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={patientAge}
+                    onChange={(e) => setPatientAge(e.target.value)}
+                    placeholder="e.g. 32"
+                    className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-200/40 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-200">Gender (optional)</label>
+                  <select
+                    value={patientGender}
+                    onChange={(e) => setPatientGender(e.target.value)}
+                    className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-sky-400 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100"
+                  >
+                    <option value="">Select gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-200">Additional information (optional)</label>
+                <textarea
+                  value={additionalInfo}
+                  onChange={(e) => setAdditionalInfo(e.target.value)}
+                  placeholder="e.g. Known allergies, existing medical conditions, current medications..."
+                  rows={2}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed outline-none transition focus:border-sky-400 focus:ring-4 focus:ring-sky-200/40 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-100"
+                />
+              </div>
+
+              <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300">
+                This tool provides preliminary AI-generated health guidance only. It is not a medical diagnosis. Always consult a qualified healthcare professional.
+              </div>
+
+              <div className="flex justify-end gap-3 pt-1">
+                <Button variant="outline" className="rounded-2xl" onClick={onClose}>Cancel</Button>
+                <Button
+                  disabled={isAnalyzing}
+                  onClick={handleAnalyze}
+                  className="rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500 px-6 shadow-lg shadow-sky-500/20 hover:from-sky-400 hover:to-emerald-400 disabled:opacity-60"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="h-4 w-4" />
+                      Analyze Symptoms
+                    </>
+                  )}
+                </Button>
+              </div>
+            </>
+          ) : (
+            /* Results View */
+            <>
+              {/* Urgency Badge */}
+              <div className={cn("flex items-center gap-3 rounded-2xl px-4 py-3", urgency!.bg)}>
+                <Activity className={cn("h-5 w-5 shrink-0", urgency!.color)} />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Urgency Level</p>
+                  <p className={cn("font-bold", urgency!.color)}>{urgency!.label}</p>
+                </div>
+              </div>
+
+              {/* Possible Conditions */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 mb-2">Possible Conditions</p>
+                <div className="flex flex-wrap gap-2">
+                  {result.possibleConditions.map((condition) => (
+                    <span key={condition} className="rounded-xl bg-sky-500/10 px-3 py-1.5 text-sm font-semibold text-sky-700 dark:text-sky-300">
+                      {condition}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recommended Specialties */}
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 mb-2">Recommended Specialties</p>
+                <div className="flex flex-wrap gap-2">
+                  {result.recommendedSpecialties.map((specialty) => (
+                    <span key={specialty} className="flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                      <Stethoscope className="h-3.5 w-3.5" />
+                      {specialty}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* General Advice */}
+              <div className="rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400 mb-2">General Advice</p>
+                <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200">{result.generalAdvice}</p>
+              </div>
+
+              {/* Disclaimer */}
+              <p className="text-xs leading-5 text-slate-400 dark:text-slate-500">{result.disclaimer}</p>
+
+              <div className="flex justify-end gap-3 pt-1">
+                <Button variant="outline" className="rounded-2xl" onClick={onClose}>Close</Button>
+                <Button
+                  className="rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500 shadow-lg shadow-sky-500/20 hover:from-sky-400 hover:to-emerald-400"
+                  onClick={handleCheckAgain}
+                >
+                  <Brain className="h-4 w-4" />
+                  Check Again
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -41,6 +41,10 @@ public class GatewayConfig {
                         .filters(f -> f.filter(filter))
                         .uri("lb://notification-service"))
 
+                .route("symptom-checker-service", r -> r.path("/v1/symptom-checker/**")
+                        .filters(f -> f.filter(filter))
+                        .uri("lb://symptom-checker-service"))
+
                 .route("auth-service", r -> r.path("/v1/auth/**")
                         .uri("lb://auth-service"))
 
