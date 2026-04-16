@@ -8,6 +8,7 @@ import {
   Edit3,
   Filter,
   Trash2,
+  Wallet,
   XCircle,
 } from "lucide-react";
 
@@ -140,11 +141,13 @@ export default function AppointmentsPage() {
             </div>
           </div>
           <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200/70 dark:border-white/10">
-            <div className="hidden grid-cols-[1fr_1fr_0.85fr_0.55fr_0.55fr_1.25fr] gap-4 border-b border-slate-200/70 bg-slate-950/[0.03] px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:border-white/10 dark:bg-white/[0.04] lg:grid">
+            <div className="hidden grid-cols-[1fr_1fr_0.85fr_1fr_0.6fr_0.6fr_0.7fr_1.2fr] gap-4 border-b border-slate-200/70 bg-slate-950/[0.03] px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:border-white/10 dark:bg-white/[0.04] lg:grid">
               <span>Patient</span>
               <span>Doctor</span>
               <span>Date / Time</span>
+              <span>Reason</span>
               <span>Status</span>
+              <span>Payment</span>
               <span>Type</span>
               <span className="text-right">Actions</span>
             </div>
@@ -161,18 +164,34 @@ export default function AppointmentsPage() {
             {appointments.map((item) => (
               <div
                 key={item.id}
-                className="grid gap-3 border-b border-slate-200/70 px-4 py-4 last:border-b-0 dark:border-white/10 lg:grid-cols-[1fr_1fr_0.85fr_0.55fr_0.55fr_1.25fr] lg:items-center"
+                className="grid gap-3 border-b border-slate-200/70 px-4 py-4 last:border-b-0 dark:border-white/10 lg:grid-cols-[1fr_1fr_0.85fr_1fr_0.6fr_0.6fr_0.7fr_1.2fr] lg:items-center"
               >
-                <p className="font-bold">
-                  {item.patient?.userInfo?.firstName || "Patient"} {item.patient?.userInfo?.lastName || ""}
-                </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {item.doctor?.userInfo?.firstName || "Doctor"} {item.doctor?.userInfo?.lastName || ""}
-                </p>
+                <div>
+                  <p className="font-bold">
+                    {item.patient?.userInfo?.firstName || "Patient"} {item.patient?.userInfo?.lastName || ""}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{item.patient?.userInfo?.email || item.patientId}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {item.doctor?.userInfo?.firstName || "Doctor"} {item.doctor?.userInfo?.lastName || ""}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {item.doctor?.specialization || "General"} · {item.doctor?.userInfo?.email || item.doctorId}
+                  </p>
+                </div>
                 <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
                   {item.appointmentDate} · {item.appointmentTime}
                 </p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">{item.reason || item.cancelReason || "General consultation"}</p>
                 <StatusBadge status={item.status} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={item.paymentStatus ?? "UNPAID"} />
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-950/5 px-2.5 py-1.5 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                    <Wallet className="h-3.5 w-3.5 text-sky-500" />
+                    {(item.consultationFee ?? 0).toFixed(2)} {item.currency ?? "USD"}
+                  </span>
+                </div>
                 <span className="w-fit rounded-full bg-slate-950/5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
                   {item.reason?.toLowerCase().includes("telemedicine") ? "Online" : "Offline"}
                 </span>
@@ -328,10 +347,12 @@ function AdminScheduleModal({
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
   const [reason, setReason] = useState("");
+  const [consultationFee, setConsultationFee] = useState("50.00");
+  const [currency, setCurrency] = useState("USD");
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
-      <div className="w-full max-w-xl rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+      <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
         <h3 className="text-xl font-bold">Schedule Appointment</h3>
         <div className="mt-4 grid gap-3">
           <input
@@ -372,6 +393,24 @@ function AdminScheduleModal({
             placeholder="Reason"
             className="min-h-20 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-slate-800"
           />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={consultationFee}
+              onChange={(event) => setConsultationFee(event.target.value)}
+              placeholder="Consultation fee"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-slate-800"
+            />
+            <input
+              value={currency}
+              onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+              placeholder="Currency (e.g. USD)"
+              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm uppercase dark:border-white/10 dark:bg-slate-800"
+              maxLength={10}
+            />
+          </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="outline" className="rounded-2xl" onClick={onClose}>
@@ -385,6 +424,12 @@ function AdminScheduleModal({
                 return;
               }
 
+              const parsedFee = Number.parseFloat(consultationFee);
+              if (!Number.isFinite(parsedFee) || parsedFee <= 0) {
+                ToastUtils.error("Consultation fee must be greater than zero.");
+                return;
+              }
+
               const normalizedTime = appointmentTime.length === 5 ? `${appointmentTime}:00` : appointmentTime;
               void onSubmit({
                 patientId,
@@ -392,6 +437,8 @@ function AdminScheduleModal({
                 appointmentDate,
                 appointmentTime: normalizedTime,
                 reason: reason || undefined,
+                consultationFee: parsedFee,
+                currency: currency || "USD",
               });
             }}
           >
@@ -418,7 +465,7 @@ function EditAppointmentModal({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
-      <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
         <h3 className="text-xl font-bold">Modify Appointment</h3>
         <div className="mt-4 grid gap-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -476,7 +523,7 @@ function CancelAppointmentModal({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
-      <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
         <h3 className="text-xl font-bold">Cancel Appointment</h3>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Add a reason so this cancellation is clear in audit and patient history.
@@ -522,7 +569,7 @@ function DeleteAppointmentModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
-      <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
         <h3 className="text-xl font-bold">Delete Appointment</h3>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           This action is permanent. Appointment ID: {appointment.id}
