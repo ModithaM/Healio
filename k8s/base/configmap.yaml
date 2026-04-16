@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: healio-config
+  namespace: healio
+data:
+  # Spring Cloud Config Server
+  CONFIG_SERVER_URL: "http://config-service:8888"
+  
+  # Service Discovery (Eureka)
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery-service:8761/eureka/"
+  EUREKA_CLIENT_REGISTER_WITH_EUREKA: "true"
+  EUREKA_CLIENT_FETCH_REGISTRY: "true"
+  
+  # Database
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/healio"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SPRING_JPA_OPEN_IN_VIEW: "false"
+  SPRING_CLOUD_LOADBALANCER_CACHE_ENABLED: "true"
+  SPRING_CLOUD_LOADBALANCER_CACHE_TTL: "30"
+  
+  # Application environment
+  SPRING_PROFILES_ACTIVE: "k8s"
+  SPRING_CONFIG_IMPORT: "configserver:http://config-service:8888/"
+  
+  # Gateway CORS (adjust origins as needed)
+  GATEWAY_CORS_ALLOWEDORIGINS: "http://localhost:3000,http://localhost:3001"
+  GATEWAY_CORS_ALLOWEDMETHODS: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+  GATEWAY_CORS_ALLOWEDHEADERS: "*"
+  GATEWAY_CORS_ALLOWCREDENTIALS: "true"
+  
+  # Logging
+  LOGGING_LEVEL_ROOT: "INFO"
+  LOGGING_LEVEL_COM_HEALIO: "DEBUG"

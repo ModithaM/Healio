@@ -1,0 +1,60 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: healio
+
+resources:
+  - ../../base
+  - ../../database
+  - ../../services/config-service
+  - ../../services/discovery-service
+  - ../../services/auth-service
+  - ../../services/user-service
+  - ../../services/patient-service
+  - ../../services/doctor-service
+  - ../../services/appointment-service
+  - ../../services/telemedicine-service
+  - ../../services/notification-service
+  - ../../services/symptom-checker-service
+  - ../../services/gateway
+  - ../../frontend
+  - ../../monitoring/hpa.yaml
+
+# Development-specific labels
+commonLabels:
+  environment: development
+
+# Patches for dev environment
+replicas:
+  - name: config-service
+    count: 1
+  - name: discovery-service
+    count: 1
+  - name: gateway
+    count: 1
+  - name: frontend
+    count: 1
+  - name: auth-service
+    count: 1
+  - name: user-service
+    count: 1
+  - name: patient-service
+    count: 1
+  - name: doctor-service
+    count: 1
+  - name: appointment-service
+    count: 1
+  - name: telemedicine-service
+    count: 1
+  - name: notification-service
+    count: 1
+  - name: symptom-checker-service
+    count: 1
+
+# Override config for dev environment
+configMapGenerator:
+  - name: healio-config
+    behavior: merge
+    literals:
+      - LOGGING_LEVEL_ROOT=DEBUG
+      - LOGGING_LEVEL_COM_HEALIO=DEBUG

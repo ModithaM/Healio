@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: healio
+  labels:
+    app: notification-service
+    component: application-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+        component: application-service
+    spec:
+      initContainers:
+      - name: wait-for-config-server
+        image: busybox:1.28
+        command: ['sh', '-c', 'until wget -q http://config-service:8888/actuator/health -O-; do echo waiting for config-service; sleep 2; done']
+      - name: wait-for-discovery-service
+        image: busybox:1.28
+        command: ['sh', '-c', 'until wget -q http://discovery-service:8761/actuator/health -O-; do echo waiting for discovery-service; sleep 2; done']
+      containers:
+      - name: notification-service
+        image: notification-service:0.0.1-SNAPSHOT
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: SPRING_APPLICATION_NAME
+          value: "notification-service"
+        - name: SERVER_PORT
+          value: "0"
+        - name: SPRING_PROFILES_ACTIVE
+          value: "k8s"
+        - name: SPRING_CONFIG_IMPORT
+          valueFrom:
+            configMapKeyRef:
+              name: healio-config
+              key: SPRING_CONFIG_IMPORT
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: healio-config
+              key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        - name: EUREKA_INSTANCE_PREFER_IP_ADDRESS
+          value: "true"
+        - name: EUREKA_INSTANCE_HOSTNAME
+          value: "notification-service"
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: healio-config
+              key: SPRING_DATASOURCE_URL
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: healio-secrets
+              key: SPRING_DATASOURCE_USERNAME
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: healio-secrets
+              key: SPRING_DATASOURCE_PASSWORD
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: healio
+  labels:
+    app: notification-service
+spec:
+  type: ClusterIP
+  selector:
+    app: notification-service
+  ports:
+  - port: 8080
+    targetPort: http
+    protocol: TCP
+    name: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: notification-service-pdb
+  namespace: healio
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: notification-service

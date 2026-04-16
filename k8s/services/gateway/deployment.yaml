@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: healio
+  labels:
+    app: gateway
+    component: infrastructure
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+        component: infrastructure
+    spec:
+      initContainers:
+      - name: wait-for-config-server
+        image: busybox:1.28
+        command: ['sh', '-c', 'until wget -q http://config-service:8888/actuator/health -O-; do echo waiting for config-service; sleep 2; done']
+      - name: wait-for-discovery-service
+        image: busybox:1.28
+        command: ['sh', '-c', 'until wget -q http://discovery-service:8761/actuator/health -O-; do echo waiting for discovery-service; sleep 2; done']
+      containers:
+      - name: gateway
+        image: gateway:0.0.1-SNAPSHOT
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: SPRING_APPLICATION_NAME
+          value: "api-gateway"
+        - name: SERVER_PORT
+          value: "8080"
+        - name: SPRING_PROFILES_ACTIVE
+          value: "k8s"
+        - name: SPRING_CONFIG_IMPORT
+          valueFrom:
+            configMapKeyRef:
+              name: healio-config
+              key: SPRING_CONFIG_IMPORT
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: healio-config
+              key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        - name: EUREKA_INSTANCE_PREFER_IP_ADDRESS
+          value: "true"
+        - name: EUREKA_INSTANCE_HOSTNAME
+          value: "gateway"
+        - name: SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_ENABLED
+          value: "true"
+        - name: SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_LOWER_CASE_SERVICE_ID
+          value: "true"
+        - name: SPRING_CLOUD_GATEWAY_HTTPCLIENT_CONNECT_TIMEOUT
+          value: "60000"
+        - name: SPRING_CLOUD_GATEWAY_HTTPCLIENT_RESPONSE_TIMEOUT
+          value: "60s"
+        resources:
+          requests:
+            memory: "384Mi"
+            cpu: "500m"
+          limits:
+            memory: "768Mi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: healio
+  labels:
+    app: gateway
+spec:
+  type: LoadBalancer
+  selector:
+    app: gateway
+  ports:
+  - port: 8080
+    targetPort: http
+    protocol: TCP
+    name: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gateway-pdb
+  namespace: healio
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: gateway
