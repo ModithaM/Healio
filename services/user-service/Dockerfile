@@ -4,13 +4,14 @@ FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /app
 
-# Copy pom.xml and download dependencies
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
+# Copy parent and module pom.xml files and download dependencies
+COPY pom.xml ./pom.xml
+COPY services/user-service/pom.xml ./services/user-service/pom.xml
+RUN mvn -f services/user-service/pom.xml dependency:go-offline -B
 
 # Copy source code and build
-COPY src ./src
-RUN mvn clean package -DskipTests -q
+COPY services/user-service/src ./services/user-service/src
+RUN mvn -f services/user-service/pom.xml clean package -DskipTests -q
 
 # Stage 2: Runtime
 FROM eclipse-temurin:21-jre-alpine
@@ -21,7 +22,7 @@ WORKDIR /app
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 # Copy JAR from builder
-COPY --from=builder /app/target/*.jar app.jar
+COPY --from=builder /app/services/user-service/target/*.jar app.jar
 
 # Change ownership
 RUN chown -R appuser:appuser /app
@@ -39,4 +40,3 @@ EXPOSE 8080
 # Run application
 ENTRYPOINT ["java", "-jar", "app.jar"]
 CMD [""]
-
