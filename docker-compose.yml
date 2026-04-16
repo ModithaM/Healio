@@ -1,0 +1,279 @@
+services:
+  # Infrastructure Services
+  config-service:
+    build:
+      context: ./services/config-service
+      dockerfile: Dockerfile
+    container_name: config-service
+    environment:
+      - SERVER_PORT=8888
+      - SPRING_PROFILES_ACTIVE=docker
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - healio-network
+
+  discovery-service:
+    build:
+      context: ./services/discovery-service
+      dockerfile: Dockerfile
+    container_name: discovery-service
+    environment:
+      - SERVER_PORT=8761
+      - SPRING_PROFILES_ACTIVE=docker
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - healio-network
+    depends_on:
+      config-service:
+        condition: service_healthy
+
+  # Core Microservices
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - healio-network
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - healio-network
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  patient-service:
+    build:
+      context: ./services/patient-service
+      dockerfile: Dockerfile
+    container_name: patient-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - healio-network
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  doctor-service:
+    build:
+      context: ./services/doctor-service
+      dockerfile: Dockerfile
+    container_name: doctor-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - healio-network
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  appointment-service:
+    build:
+      context: ./services/appointment-service
+      dockerfile: Dockerfile
+    container_name: appointment-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - healio-network
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  telemedicine-service:
+    build:
+      context: ./services/telemedicine-service
+      dockerfile: Dockerfile
+    container_name: telemedicine-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - healio-network
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - healio-network
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  symptom-checker-service:
+    build:
+      context: ./services/symptom-checker-service
+      dockerfile: Dockerfile
+    container_name: symptom-checker-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - healio-network
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - healio-network
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+
+  # Frontend Client
+  client:
+    build:
+      context: ./client/healio
+      dockerfile: Dockerfile
+    container_name: healio-client
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:8080/v1
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - healio-network
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
+networks:
+  healio-network:
+    driver: bridge
