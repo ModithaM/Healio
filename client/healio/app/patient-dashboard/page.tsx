@@ -17,6 +17,7 @@ import {
   FileText,
   HeartPulse,
   Home,
+  Loader2,
   LogOut,
   Mail,
   Moon,
@@ -50,7 +51,15 @@ import { cn } from "@/lib/utils";
 import { getTelemedicineJoinDetails, startTelemedicineSession } from "@/service/telemedicine";
 import { useAuthStore } from "@/store/authStore";
 import PatientProfileForm from "@/components/PatientProfileForm";
-import { deletePatientProfile, getPatientProfileByUserId, PatientProfileResponse } from "@/service/patientApi";
+import {
+  deletePatientProfile,
+  deleteMedicalDocument,
+  getPatientDocuments,
+  getPatientProfileByUserId,
+  uploadMedicalDocument,
+  MedicalDocument,
+  PatientProfileResponse,
+} from "@/service/patientApi";
 import { getAllDoctors } from "@/service/doctorApi";
 import {
   AppointmentResponse,
@@ -104,11 +113,6 @@ const actions = [
   { label: "AI Symptom Checker", icon: Brain, description: "Describe symptoms for AI health guidance" },
 ];
 
-const reports = [
-  { name: "Full Blood Count Report", date: "Apr 10, 2026", type: "PDF", size: "1.8 MB" },
-  { name: "Cardiac Stress Test Results", date: "Mar 28, 2026", type: "PDF", size: "3.4 MB" },
-  { name: "Chest X-Ray Scan", date: "Mar 12, 2026", type: "PNG", size: "5.1 MB" },
-];
 
 const activities = [
   { title: "Telemedicine appointment booked", detail: "Cardiology session scheduled for today at 4:30 PM", time: "25 min ago", icon: Video },
@@ -131,6 +135,9 @@ export default function PatientDashboardPage() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isSymptomCheckerOpen, setIsSymptomCheckerOpen] = useState(false);
   const [payingAppointment, setPayingAppointment] = useState<AppointmentResponse | null>(null);
+  const [medicalReports, setMedicalReports] = useState<MedicalDocument[]>([]);
+  const [isReportsLoading, setIsReportsLoading] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAppointmentsLoading, setIsAppointmentsLoading] = useState(false);
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
   const user = useAuthStore((state) => state.user);
@@ -140,6 +147,16 @@ export default function PatientDashboardPage() {
     isLoading: sessionsLoading,
     refetch: refetchTelemedicineSessions,
   } = useTelemedicineSessions({ patientId, enabled: Boolean(patientId) });
+
+  const loadMedicalReports = async () => {
+    if (!user?.userId) return;
+    setIsReportsLoading(true);
+    const result = await getPatientDocuments(user.userId);
+    if (result.success) {
+      setMedicalReports(result.data ?? []);
+    }
+    setIsReportsLoading(false);
+  };
 
   useEffect(() => {
     const loadPatientProfile = async () => {
@@ -163,6 +180,7 @@ export default function PatientDashboardPage() {
     };
 
     loadPatientProfile();
+    void loadMedicalReports();
   }, [user?.userId]);
 
   const loadAppointmentData = async () => {
@@ -318,7 +336,7 @@ export default function PatientDashboardPage() {
       },
       {
         label: "Uploaded Medical Reports",
-        value: String(reports.length).padStart(2, "0"),
+        value: String(medicalReports.length).padStart(2, "0"),
         icon: FileText,
         accent: "from-blue-500 to-indigo-400",
         helper: "Stored reports",
@@ -331,7 +349,7 @@ export default function PatientDashboardPage() {
         helper: "Medication plans",
       },
     ];
-  }, [appointments, prescriptions]);
+  }, [appointments, prescriptions, medicalReports.length]);
 
   if (isLoadingProfile) {
     return (
@@ -397,6 +415,7 @@ export default function PatientDashboardPage() {
               <QuickActions
                 onEditProfile={() => setShowProfileForm(true)}
                 onBookAppointment={() => setIsBookingModalOpen(true)}
+                onUploadReport={() => setIsUploadModalOpen(true)}
                 onViewPrescriptions={() => {
                   document.getElementById("patient-prescriptions")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
@@ -419,7 +438,13 @@ export default function PatientDashboardPage() {
               />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-4">
-              <ReportsSection />
+              <ReportsSection
+                reports={medicalReports}
+                isLoading={isReportsLoading}
+                userId={user?.userId ?? ""}
+                onUpload={() => setIsUploadModalOpen(true)}
+                onDeleted={loadMedicalReports}
+              />
             </motion.div>
 
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-5">
@@ -472,6 +497,16 @@ export default function PatientDashboardPage() {
           <SymptomCheckerModal
             userId={user?.userId ?? ""}
             onClose={() => setIsSymptomCheckerOpen(false)}
+          />
+        )}
+        {isUploadModalOpen && (
+          <UploadReportModal
+            userId={user?.userId ?? ""}
+            onClose={() => setIsUploadModalOpen(false)}
+            onUploaded={() => {
+              setIsUploadModalOpen(false);
+              void loadMedicalReports();
+            }}
           />
         )}
       </main>
@@ -729,11 +764,13 @@ function QuickActions({
   onBookAppointment,
   onViewPrescriptions,
   onOpenSymptomChecker,
+  onUploadReport,
 }: {
   onEditProfile?: () => void;
   onBookAppointment?: () => void;
   onViewPrescriptions?: () => void;
   onOpenSymptomChecker?: () => void;
+  onUploadReport?: () => void;
 }) {
   const handleActionClick = (label: string) => {
     if (label === "Update Profile" && onEditProfile) {
@@ -747,6 +784,9 @@ function QuickActions({
     }
     if (label === "AI Symptom Checker" && onOpenSymptomChecker) {
       onOpenSymptomChecker();
+    }
+    if (label === "Upload Medical Report" && onUploadReport) {
+      onUploadReport();
     }
   };
 
@@ -962,36 +1002,99 @@ function AppointmentsSection({
   );
 }
 
-function ReportsSection() {
+function ReportsSection({
+  reports,
+  isLoading,
+  userId,
+  onUpload,
+  onDeleted,
+}: {
+  reports: MedicalDocument[];
+  isLoading: boolean;
+  userId: string;
+  onUpload: () => void;
+  onDeleted: () => void;
+}) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (documentId: string) => {
+    if (!window.confirm("Delete this medical report? This action cannot be undone.")) return;
+    setDeletingId(documentId);
+    const result = await deleteMedicalDocument(userId, documentId);
+    setDeletingId(null);
+    if (result.success) {
+      onDeleted();
+    }
+  };
+
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <div className="flex items-center justify-between gap-4">
         <SectionTitle eyebrow="Medical reports" title="Uploaded files" />
-        <Button size="icon" className="rounded-2xl bg-gradient-to-br from-sky-500 to-emerald-500">
+        <Button
+          size="icon"
+          className="rounded-2xl bg-gradient-to-br from-sky-500 to-emerald-500"
+          onClick={onUpload}
+          title="Upload new report"
+        >
           <UploadCloud className="h-5 w-5" />
         </Button>
       </div>
       <div className="mt-5 grid gap-2.5">
-        {reports.map((report) => (
-          <div key={report.name} className="flex items-center justify-between gap-3 rounded-[24px] border border-slate-200/70 bg-white/62 p-4 dark:border-white/10 dark:bg-white/[0.05]">
+        {isLoading && (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-6 w-6 animate-spin text-sky-500" />
+          </div>
+        )}
+        {!isLoading && reports.length === 0 && (
+          <div className="rounded-[22px] border border-dashed border-slate-200 p-6 text-center dark:border-white/10">
+            <FileText className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+            <p className="mt-2 text-sm font-semibold text-slate-400 dark:text-slate-500">No reports uploaded yet.</p>
+          </div>
+        )}
+        {!isLoading && reports.map((report) => (
+          <div key={report.id} className="flex items-center justify-between gap-3 rounded-[24px] border border-slate-200/70 bg-white/62 p-4 dark:border-white/10 dark:bg-white/[0.05]">
             <div className="flex min-w-0 items-center gap-3">
               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-300">
                 <FileText className="h-6 w-6" />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold">{report.name}</p>
-                <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  {report.date} · {report.type} · {report.size}
-                </p>
+                <p className="truncate text-sm font-bold">{report.fileName}</p>
+                {report.uploadedAt && (
+                  <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    {new Date(report.uploadedAt).toLocaleDateString()}
+                  </p>
+                )}
               </div>
             </div>
-            <Button variant="outline" size="icon" className="shrink-0 rounded-2xl">
-              <Download className="h-4 w-4" />
-            </Button>
+            <div className="flex shrink-0 gap-2">
+              <a href={report.fileUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="icon" className="rounded-2xl" title="View / Download">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </a>
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-2xl text-rose-500 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                onClick={() => void handleDelete(report.id)}
+                disabled={deletingId === report.id}
+                title="Delete report"
+              >
+                {deletingId === report.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </div>
         ))}
       </div>
-      <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-[22px] border border-dashed border-sky-300 bg-sky-50/70 p-4 text-sm font-bold text-sky-700 transition hover:-translate-y-1 hover:bg-sky-100 dark:border-sky-300/30 dark:bg-sky-400/10 dark:text-sky-200">
+      <button
+        onClick={onUpload}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-[22px] border border-dashed border-sky-300 bg-sky-50/70 p-4 text-sm font-bold text-sky-700 transition hover:-translate-y-1 hover:bg-sky-100 dark:border-sky-300/30 dark:bg-sky-400/10 dark:text-sky-200"
+      >
         <UploadCloud className="h-5 w-5" />
         Upload new report
       </button>
@@ -1398,6 +1501,114 @@ function HeaderIconButton({
     >
       {children}
     </button>
+  );
+}
+
+function UploadReportModal({
+  userId,
+  onClose,
+  onUploaded,
+}: {
+  userId: string;
+  onClose: () => void;
+  onUploaded: () => void;
+}) {
+  const [fileName, setFileName] = useState("");
+  const [fileUrl, setFileUrl] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!fileName.trim()) {
+      ToastUtils.error("Please enter a file name.");
+      return;
+    }
+    if (!fileUrl.trim()) {
+      ToastUtils.error("Please enter a file URL.");
+      return;
+    }
+    try {
+      new URL(fileUrl.trim());
+    } catch {
+      ToastUtils.error("Please enter a valid URL.");
+      return;
+    }
+
+    setIsUploading(true);
+    const result = await uploadMedicalDocument(userId, fileName.trim(), fileUrl.trim());
+    setIsUploading(false);
+
+    if (result.success) {
+      onUploaded();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
+      <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl font-bold">Upload Medical Report</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Add a lab report, scan, or any medical document
+            </p>
+          </div>
+          <Button variant="outline" className="rounded-2xl" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+        <div className="mt-5 grid gap-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              File Name
+            </label>
+            <input
+              type="text"
+              value={fileName}
+              onChange={(e) => setFileName(e.target.value)}
+              placeholder="e.g. Blood Test Report - April 2026"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200/40 dark:border-white/10 dark:bg-slate-800 dark:focus:ring-sky-400/10"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              File URL
+            </label>
+            <input
+              type="url"
+              value={fileUrl}
+              onChange={(e) => setFileUrl(e.target.value)}
+              placeholder="https://storage.example.com/your-report.pdf"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-200/40 dark:border-white/10 dark:bg-slate-800 dark:focus:ring-sky-400/10"
+            />
+            <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+              Upload your file to a storage service (Google Drive, Dropbox, S3, etc.) and paste the shareable link here.
+            </p>
+          </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+          <Button variant="outline" className="rounded-2xl" onClick={onClose} disabled={isUploading}>
+            Cancel
+          </Button>
+          <Button
+            className="rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500"
+            onClick={() => void handleSubmit()}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <UploadCloud className="h-4 w-4" />
+                Upload Report
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
