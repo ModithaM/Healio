@@ -27,7 +27,7 @@ if [[ ! "$ENVIRONMENT" =~ ^(dev|staging|prod)$ ]]; then
   exit 1
 fi
 
-OVERLAY_PATH="$SCRIPT_DIR/k8s/overlays/$ENVIRONMENT"
+OVERLAY_PATH="$SCRIPT_DIR/overlays/$ENVIRONMENT"
 
 if [[ ! -d "$OVERLAY_PATH" ]]; then
   echo -e "${RED}Error: Overlay directory not found: $OVERLAY_PATH${NC}"
