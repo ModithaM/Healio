@@ -137,7 +137,7 @@ export default function DoctorDashboardPage() {
   const [editingSession, setEditingSession] = useState<TelemedicineSession | null>(null);
   const [meetingDetails, setMeetingDetails] = useState<MeetingJoinDetails | null>(null);
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
-  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentResponse | null>(null);
   const [prescriptionDiagnosis, setPrescriptionDiagnosis] = useState("");
   const [prescriptionNotes, setPrescriptionNotes] = useState("");
@@ -379,8 +379,21 @@ export default function DoctorDashboardPage() {
 
   useEffect(() => {
     if (!doctorId) return;
-    void loadAppointments();
-  }, [doctorId, loadAppointments]);
+    let isActive = true;
+
+    void getAppointmentsByDoctorId(doctorId).then((result) => {
+      if (!isActive) return;
+      if (result.success) {
+        setAppointments(result.data ?? []);
+      } else if (result.error) {
+        ToastUtils.error(result.error);
+      }
+      setAppointmentsLoading(false);
+    });
+    return () => {
+      isActive = false;
+    };
+  }, [doctorId]);
 
   const handleAppointmentAction = async (
     appointment: AppointmentResponse,
