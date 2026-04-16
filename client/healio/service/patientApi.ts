@@ -13,6 +13,12 @@ export interface PatientProfileData {
   emergencyContactPhone?: string;
 }
 
+export interface MedicalDocument {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+}
+
 export interface PatientProfileResponse extends PatientProfileData {
   medicalDocuments?: Array<{
     id: string;
@@ -139,6 +145,21 @@ export const getAllPatients = async (): Promise<apiResponse<PatientProfileRespon
     return { success: true, data: response.data };
   } catch (error) {
     const message = getErrorMessage(error, "Failed to fetch patients.");
+    ToastUtils.error(message);
+    return { success: false, error: message };
+  }
+};
+
+export const getPatientDocuments = async (
+  userId: string
+): Promise<apiResponse<MedicalDocument[]>> => {
+  try {
+    const response = await privateAxios.get<MedicalDocument[]>(
+      `/patient-service/getDocuments/${userId}`
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    const message = getErrorMessage(error, "Failed to fetch patient documents.");
     ToastUtils.error(message);
     return { success: false, error: message };
   }

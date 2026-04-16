@@ -54,6 +54,7 @@ import DoctorAvailabilityForm from "@/components/DoctorAvailabilityForm";
 import DoctorProfileForm from "@/components/DoctorProfileForm";
 import {
   deleteDoctorAvailability,
+  deleteDoctorProfile,
   getDoctorProfileByUserId,
 } from "@/service/doctorApi";
 import {
@@ -65,6 +66,7 @@ import {
   getAppointmentsByDoctorId,
   noShowAppointment,
 } from "@/service/appointmentApi";
+import { getPatientDocuments, type MedicalDocument } from "@/service/patientApi";
 import {
   cancelTelemedicineSession,
   completeTelemedicineSession,
@@ -184,6 +186,12 @@ export default function DoctorDashboardPage() {
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfileResponse | null>(null);
   const [availabilitySlots, setAvailabilitySlots] = useState<DoctorAvailabilityResponse[]>([]);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+
+  // Patient reports modal state
+  const [patientReportsModal, setPatientReportsModal] = useState(false);
+  const [patientReportsLoading, setPatientReportsLoading] = useState(false);
+  const [patientReports, setPatientReports] = useState<Array<{ patientId: string; patientName: string; documents: MedicalDocument[] }>>([]);
 
   // modal state
   const [profileModal, setProfileModal] = useState<"create" | "edit" | null>(null);
@@ -253,6 +261,56 @@ export default function DoctorDashboardPage() {
     if (!user?.userId) return;
     await deleteDoctorAvailability(user.userId, slotId);
     loadDoctorData();
+  };
+
+  const handleDeleteProfile = async () => {
+    if (!user?.userId) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete your doctor profile? This action cannot be undone."
+    );
+    if (!confirmed) return;
+
+    setIsDeleteLoading(true);
+    const result = await deleteDoctorProfile(user.userId);
+    setIsDeleteLoading(false);
+
+    if (result.success) {
+      setDoctorProfile(null);
+      setAvailabilitySlots([]);
+      setProfileModal("create");
+    }
+  };
+
+  const handleViewPatientReports = async () => {
+    setPatientReportsModal(true);
+    setPatientReportsLoading(true);
+    setPatientReports([]);
+
+    const uniquePatientIds = [...new Set(appointments.map((a) => a.patientId).filter(Boolean))];
+
+    const results = await Promise.allSettled(
+      uniquePatientIds.map(async (patientId) => {
+        const docsResult = await getPatientDocuments(patientId);
+        const patientName =
+          appointments.find((a) => a.patientId === patientId)?.patient?.userInfo
+            ? `${appointments.find((a) => a.patientId === patientId)?.patient?.userInfo?.firstName || ""} ${appointments.find((a) => a.patientId === patientId)?.patient?.userInfo?.lastName || ""}`.trim()
+            : patientId;
+        return {
+          patientId,
+          patientName: patientName || patientId,
+          documents: docsResult.success ? (docsResult.data ?? []) : [],
+        };
+      })
+    );
+
+    const data = results
+      .filter((r): r is PromiseFulfilledResult<{ patientId: string; patientName: string; documents: MedicalDocument[] }> => r.status === "fulfilled")
+      .map((r) => r.value)
+      .filter((r) => r.documents.length > 0);
+
+    setPatientReports(data);
+    setPatientReportsLoading(false);
   };
 
   const displayName = user?.firstName
@@ -420,7 +478,9 @@ export default function DoctorDashboardPage() {
                 displayName={displayName}
                 userEmail={user?.email || ""}
                 isLoading={isProfileLoading}
+                isDeleteLoading={isDeleteLoading}
                 onEdit={() => setProfileModal("edit")}
+                onDelete={handleDeleteProfile}
                 onCreateProfile={() => setProfileModal("create")}
               />
             </motion.div>
@@ -435,9 +495,19 @@ export default function DoctorDashboardPage() {
 
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-9">
               <QuickActions
+                onManageAvailability={() => setAvailabilityModal("add")}
                 onViewAppointments={() => {
                   document.getElementById("appointment-management")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
+                onJoinTelemedicine={() => {
+                  const nextJoinable = telemedicineSessions.find(canJoinSession);
+                  if (nextJoinable) {
+                    void handleJoinSession(nextJoinable);
+                  } else {
+                    document.getElementById("telemedicine-sessions")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
+                }}
+                onViewPatientReports={() => void handleViewPatientReports()}
                 onIssuePrescription={() => {
                   if (!appointments[0]) {
                     ToastUtils.error("No appointment is available to attach a prescription.");
@@ -484,7 +554,7 @@ export default function DoctorDashboardPage() {
                 onIssuePrescription={(appointment) => setSelectedAppointment(appointment)}
               />
             </motion.div>
-            <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-7">
+            <motion.div id="telemedicine-sessions" variants={fadeUp} className="h-full md:col-span-2 xl:col-span-7">
               <TelemedicineSessions
                 sessions={telemedicineSessions}
                 isLoading={sessionsLoading}
@@ -617,6 +687,71 @@ export default function DoctorDashboardPage() {
             </div>
           </div>
         )}
+        {patientReportsModal && (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold">Patient Uploaded Reports</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Medical documents uploaded by your patients
+                  </p>
+                </div>
+                <Button variant="outline" className="rounded-2xl" onClick={() => setPatientReportsModal(false)}>
+                  Close
+                </Button>
+              </div>
+              <div className="mt-5">
+                {patientReportsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-sky-500" />
+                  </div>
+                ) : patientReports.length === 0 ? (
+                  <div className="rounded-[22px] border border-dashed border-slate-200 p-8 text-center dark:border-white/10">
+                    <FileHeart className="mx-auto h-10 w-10 text-slate-400" />
+                    <p className="mt-3 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                      No patient reports found. Reports are uploaded by patients from their dashboard.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {patientReports.map((entry) => (
+                      <div key={entry.patientId} className="rounded-[22px] border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="grid h-10 w-10 place-items-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
+                            <UserRound className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-100">{entry.patientName}</p>
+                            <p className="text-xs text-slate-400">{entry.documents.length} document{entry.documents.length !== 1 ? "s" : ""}</p>
+                          </div>
+                        </div>
+                        <div className="grid gap-2">
+                          {entry.documents.map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/70 bg-white p-3 dark:border-white/10 dark:bg-slate-800">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <FileText className="h-4 w-4 shrink-0 text-sky-500" />
+                                <span className="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{doc.fileName}</span>
+                              </div>
+                              <a
+                                href={doc.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 transition hover:bg-sky-100 dark:border-sky-400/30 dark:bg-sky-400/10 dark:text-sky-300 dark:hover:bg-sky-400/20"
+                              >
+                                View
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -743,14 +878,18 @@ function DoctorProfileCard({
   displayName,
   userEmail,
   isLoading,
+  isDeleteLoading,
   onEdit,
+  onDelete,
   onCreateProfile,
 }: {
   profile: DoctorProfileResponse | null;
   displayName: string;
   userEmail: string;
   isLoading: boolean;
+  isDeleteLoading: boolean;
   onEdit: () => void;
+  onDelete: () => void;
   onCreateProfile: () => void;
 }) {
   const verificationColor =
@@ -857,10 +996,20 @@ function DoctorProfileCard({
         ))}
       </div>
 
-      <Button className="mt-5 w-full rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200" onClick={onEdit}>
-        <Edit3 className="h-4 w-4" />
-        Edit Doctor Profile
-      </Button>
+      <div className="mt-5 flex flex-col gap-2.5">
+        <Button className="w-full rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200" onClick={onEdit}>
+          <Edit3 className="h-4 w-4" />
+          Edit Doctor Profile
+        </Button>
+        <Button
+          className="w-full rounded-2xl bg-red-600 hover:bg-red-800 dark:bg-red-700 dark:hover:bg-red-900 text-white disabled:opacity-50"
+          disabled={isDeleteLoading}
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+          {isDeleteLoading ? "Deleting..." : "Delete Profile"}
+        </Button>
+      </div>
     </Card>
   );
 }
@@ -884,12 +1033,26 @@ function StatCard({ label, value, helper, icon: Icon, accent }: { label: string;
 
 // quick Actions
 function QuickActions({
+  onManageAvailability,
   onViewAppointments,
+  onJoinTelemedicine,
+  onViewPatientReports,
   onIssuePrescription,
 }: {
+  onManageAvailability: () => void;
   onViewAppointments: () => void;
+  onJoinTelemedicine: () => void;
+  onViewPatientReports: () => void;
   onIssuePrescription: () => void;
 }) {
+  const actionHandlers: Record<string, () => void> = {
+    "Manage Availability": onManageAvailability,
+    "View Appointments": onViewAppointments,
+    "Join Telemedicine": onJoinTelemedicine,
+    "View Patient Reports": onViewPatientReports,
+    "Issue Prescription": onIssuePrescription,
+  };
+
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <SectionTitle eyebrow="Quick actions" title="Clinical productivity shortcuts" />
@@ -897,14 +1060,7 @@ function QuickActions({
         {actions.map((action) => (
           <button
             key={action.label}
-            onClick={() => {
-              if (action.label === "View Appointments") {
-                onViewAppointments();
-              }
-              if (action.label === "Issue Prescription") {
-                onIssuePrescription();
-              }
-            }}
+            onClick={actionHandlers[action.label]}
             className="group h-full flex flex-col rounded-[24px] border border-slate-200/70 bg-white/68 p-4 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:border-sky-300 hover:bg-sky-50/80 hover:shadow-xl hover:shadow-sky-500/10 dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-sky-400/10"
           >
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25 transition group-hover:scale-105">
