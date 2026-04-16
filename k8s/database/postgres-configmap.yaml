@@ -6,6 +6,7 @@ metadata:
 data:
   init-schemas.sql: |
     CREATE SCHEMA IF NOT EXISTS healio;
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
     
     -- Create users table
     CREATE TABLE IF NOT EXISTS healio.users (
