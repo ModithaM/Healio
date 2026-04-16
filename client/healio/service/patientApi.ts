@@ -13,6 +13,13 @@ export interface PatientProfileData {
   emergencyContactPhone?: string;
 }
 
+export interface MedicalDocument {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  uploadedAt?: string;
+}
+
 export interface PatientProfileResponse extends PatientProfileData {
   medicalDocuments?: Array<{
     id: string;
@@ -139,6 +146,56 @@ export const getAllPatients = async (): Promise<apiResponse<PatientProfileRespon
     return { success: true, data: response.data };
   } catch (error) {
     const message = getErrorMessage(error, "Failed to fetch patients.");
+    ToastUtils.error(message);
+    return { success: false, error: message };
+  }
+};
+
+export const getPatientDocuments = async (
+  userId: string
+): Promise<apiResponse<MedicalDocument[]>> => {
+  try {
+    const response = await privateAxios.get<PatientProfileResponse>(
+      `/patient-service/getDocuments/${userId}`
+    );
+    return { success: true, data: response.data.medicalDocuments ?? [] };
+  } catch (error) {
+    const message = getErrorMessage(error, "Failed to fetch patient documents.");
+    ToastUtils.error(message);
+    return { success: false, error: message };
+  }
+};
+
+export const uploadMedicalDocument = async (
+  userId: string,
+  fileName: string,
+  fileUrl: string
+): Promise<apiResponse<MedicalDocument>> => {
+  try {
+    const response = await privateAxios.post<MedicalDocument>(
+      `/patient-service/uploadDocument/${userId}`,
+      null,
+      { params: { fileName, fileUrl } }
+    );
+    ToastUtils.success("Medical report uploaded successfully!");
+    return { success: true, data: response.data };
+  } catch (error) {
+    const message = getErrorMessage(error, "Failed to upload medical document. Please try again.");
+    ToastUtils.error(message);
+    return { success: false, error: message };
+  }
+};
+
+export const deleteMedicalDocument = async (
+  userId: string,
+  documentId: string
+): Promise<apiResponse<void>> => {
+  try {
+    await privateAxios.delete(`/patient-service/deleteDocument/${userId}/${documentId}`);
+    ToastUtils.success("Medical report deleted successfully!");
+    return { success: true };
+  } catch (error) {
+    const message = getErrorMessage(error, "Failed to delete medical document. Please try again.");
     ToastUtils.error(message);
     return { success: false, error: message };
   }

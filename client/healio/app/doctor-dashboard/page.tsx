@@ -54,6 +54,7 @@ import DoctorAvailabilityForm from "@/components/DoctorAvailabilityForm";
 import DoctorProfileForm from "@/components/DoctorProfileForm";
 import {
   deleteDoctorAvailability,
+  deleteDoctorProfile,
   getDoctorProfileByUserId,
 } from "@/service/doctorApi";
 import {
@@ -65,6 +66,7 @@ import {
   getAppointmentsByDoctorId,
   noShowAppointment,
 } from "@/service/appointmentApi";
+import { getPatientDocuments, type MedicalDocument } from "@/service/patientApi";
 import {
   cancelTelemedicineSession,
   completeTelemedicineSession,
@@ -135,7 +137,7 @@ export default function DoctorDashboardPage() {
   const [editingSession, setEditingSession] = useState<TelemedicineSession | null>(null);
   const [meetingDetails, setMeetingDetails] = useState<MeetingJoinDetails | null>(null);
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
-  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentResponse | null>(null);
   const [prescriptionDiagnosis, setPrescriptionDiagnosis] = useState("");
   const [prescriptionNotes, setPrescriptionNotes] = useState("");
@@ -184,6 +186,12 @@ export default function DoctorDashboardPage() {
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfileResponse | null>(null);
   const [availabilitySlots, setAvailabilitySlots] = useState<DoctorAvailabilityResponse[]>([]);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+
+  // Patient reports modal state
+  const [patientReportsModal, setPatientReportsModal] = useState(false);
+  const [patientReportsLoading, setPatientReportsLoading] = useState(false);
+  const [patientReports, setPatientReports] = useState<Array<{ patientId: string; patientName: string; documents: MedicalDocument[] }>>([]);
 
   // modal state
   const [profileModal, setProfileModal] = useState<"create" | "edit" | null>(null);
@@ -255,6 +263,56 @@ export default function DoctorDashboardPage() {
     loadDoctorData();
   };
 
+  const handleDeleteProfile = async () => {
+    if (!user?.userId) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to delete your doctor profile? This action cannot be undone."
+    );
+    if (!confirmed) return;
+
+    setIsDeleteLoading(true);
+    const result = await deleteDoctorProfile(user.userId);
+    setIsDeleteLoading(false);
+
+    if (result.success) {
+      setDoctorProfile(null);
+      setAvailabilitySlots([]);
+      setProfileModal("create");
+    }
+  };
+
+  const handleViewPatientReports = async () => {
+    setPatientReportsModal(true);
+    setPatientReportsLoading(true);
+    setPatientReports([]);
+
+    const uniquePatientIds = [...new Set(appointments.map((a) => a.patientId).filter(Boolean))];
+
+    const results = await Promise.allSettled(
+      uniquePatientIds.map(async (patientId) => {
+        const docsResult = await getPatientDocuments(patientId);
+        const patientName =
+          appointments.find((a) => a.patientId === patientId)?.patient?.userInfo
+            ? `${appointments.find((a) => a.patientId === patientId)?.patient?.userInfo?.firstName || ""} ${appointments.find((a) => a.patientId === patientId)?.patient?.userInfo?.lastName || ""}`.trim()
+            : patientId;
+        return {
+          patientId,
+          patientName: patientName || patientId,
+          documents: docsResult.success ? (docsResult.data ?? []) : [],
+        };
+      })
+    );
+
+    const data = results
+      .filter((r): r is PromiseFulfilledResult<{ patientId: string; patientName: string; documents: MedicalDocument[] }> => r.status === "fulfilled")
+      .map((r) => r.value)
+      .filter((r) => r.documents.length > 0);
+
+    setPatientReports(data);
+    setPatientReportsLoading(false);
+  };
+
   const displayName = user?.firstName
     ? `Dr. ${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
     : "Doctor";
@@ -321,8 +379,21 @@ export default function DoctorDashboardPage() {
 
   useEffect(() => {
     if (!doctorId) return;
-    void loadAppointments();
-  }, [doctorId, loadAppointments]);
+    let isActive = true;
+
+    void getAppointmentsByDoctorId(doctorId).then((result) => {
+      if (!isActive) return;
+      if (result.success) {
+        setAppointments(result.data ?? []);
+      } else if (result.error) {
+        ToastUtils.error(result.error);
+      }
+      setAppointmentsLoading(false);
+    });
+    return () => {
+      isActive = false;
+    };
+  }, [doctorId]);
 
   const handleAppointmentAction = async (
     appointment: AppointmentResponse,
@@ -397,14 +468,14 @@ export default function DoctorDashboardPage() {
     <div className={cn(isDark && "dark")}>
       <main className="min-h-screen overflow-hidden bg-[#f4f9fc] text-slate-950 transition-colors duration-500 dark:bg-[#020817] dark:text-white [&_a]:cursor-pointer [&_button]:cursor-pointer">
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.18),transparent_28%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.14),transparent_28%),linear-gradient(135deg,rgba(248,252,255,0.96),rgba(236,253,245,0.44))] dark:bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.18),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(20,184,166,0.15),transparent_30%),linear-gradient(135deg,rgba(2,8,23,0.98),rgba(8,13,31,0.9))]" />
-        <div className="pointer-events-none fixed left-8 top-8 h-64 w-[52rem] rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
-        <div className="pointer-events-none fixed bottom-8 right-8 h-72 w-[42rem] rounded-full bg-emerald-200/30 blur-3xl dark:bg-emerald-500/10" />
+        <div className="pointer-events-none fixed left-8 top-8 h-64 w-208 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
+        <div className="pointer-events-none fixed bottom-8 right-8 h-72 w-2xl rounded-full bg-emerald-200/30 blur-3xl dark:bg-emerald-500/10" />
 
         <motion.div
           variants={stagger}
           initial="hidden"
           animate="show"
-          className="relative mx-auto flex w-full max-w-[1540px] flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8"
+          className="relative mx-auto flex w-full max-w-385 flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8"
         >
           <DashboardHeader
             isDark={isDark}
@@ -413,14 +484,16 @@ export default function DoctorDashboardPage() {
             onToggleDark={() => setIsDark((v) => !v)}
           />
 
-          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12 [grid-auto-flow:dense]">
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12 grid-flow-dense">
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-3 xl:row-span-2">
               <DoctorProfileCard
                 profile={doctorProfile}
                 displayName={displayName}
                 userEmail={user?.email || ""}
                 isLoading={isProfileLoading}
+                isDeleteLoading={isDeleteLoading}
                 onEdit={() => setProfileModal("edit")}
+                onDelete={handleDeleteProfile}
                 onCreateProfile={() => setProfileModal("create")}
               />
             </motion.div>
@@ -435,9 +508,19 @@ export default function DoctorDashboardPage() {
 
             <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-9">
               <QuickActions
+                onManageAvailability={() => setAvailabilityModal("add")}
                 onViewAppointments={() => {
                   document.getElementById("appointment-management")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
+                onJoinTelemedicine={() => {
+                  const nextJoinable = telemedicineSessions.find(canJoinSession);
+                  if (nextJoinable) {
+                    void handleJoinSession(nextJoinable);
+                  } else {
+                    document.getElementById("telemedicine-sessions")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }
+                }}
+                onViewPatientReports={() => void handleViewPatientReports()}
                 onIssuePrescription={() => {
                   if (!appointments[0]) {
                     ToastUtils.error("No appointment is available to attach a prescription.");
@@ -484,7 +567,7 @@ export default function DoctorDashboardPage() {
                 onIssuePrescription={(appointment) => setSelectedAppointment(appointment)}
               />
             </motion.div>
-            <motion.div variants={fadeUp} className="h-full md:col-span-2 xl:col-span-7">
+            <motion.div id="telemedicine-sessions" variants={fadeUp} className="h-full md:col-span-2 xl:col-span-7">
               <TelemedicineSessions
                 sessions={telemedicineSessions}
                 isLoading={sessionsLoading}
@@ -579,13 +662,13 @@ export default function DoctorDashboardPage() {
                   { label: "Appointment Date", value: selectedAppointment.appointmentDate },
                   { label: "Appointment Time", value: selectedAppointment.appointmentTime },
                 ].map((field) => (
-                  <div key={field.label} className="rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                  <div key={field.label} className="rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/4">
                     <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{field.label}</p>
                     <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">{field.value}</p>
                   </div>
                 ))}
               </div>
-              <div className="mt-4 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <div className="mt-4 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/4">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Visit context</p>
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Reason: {selectedAppointment.reason || "General consultation"}</p>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Status: {selectedAppointment.status}</p>
@@ -610,9 +693,74 @@ export default function DoctorDashboardPage() {
                 <Button variant="outline" className="rounded-2xl" onClick={() => setSelectedAppointment(null)}>
                   Close
                 </Button>
-                <Button className="rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-500" onClick={() => void handleCreatePrescription()}>
+                <Button className="rounded-2xl bg-linear-to-r from-sky-500 to-emerald-500" onClick={() => void handleCreatePrescription()}>
                   Save Prescription
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {patientReportsModal && (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold">Patient Uploaded Reports</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Medical documents uploaded by your patients
+                  </p>
+                </div>
+                <Button variant="outline" className="rounded-2xl" onClick={() => setPatientReportsModal(false)}>
+                  Close
+                </Button>
+              </div>
+              <div className="mt-5">
+                {patientReportsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-sky-500" />
+                  </div>
+                ) : patientReports.length === 0 ? (
+                  <div className="rounded-[22px] border border-dashed border-slate-200 p-8 text-center dark:border-white/10">
+                    <FileHeart className="mx-auto h-10 w-10 text-slate-400" />
+                    <p className="mt-3 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                      No patient reports found. Reports are uploaded by patients from their dashboard.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {patientReports.map((entry) => (
+                      <div key={entry.patientId} className="rounded-[22px] border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="grid h-10 w-10 place-items-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
+                            <UserRound className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-100">{entry.patientName}</p>
+                            <p className="text-xs text-slate-400">{entry.documents.length} document{entry.documents.length !== 1 ? "s" : ""}</p>
+                          </div>
+                        </div>
+                        <div className="grid gap-2">
+                          {entry.documents.map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/70 bg-white p-3 dark:border-white/10 dark:bg-slate-800">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <FileText className="h-4 w-4 shrink-0 text-sky-500" />
+                                <span className="truncate text-sm font-semibold text-slate-700 dark:text-slate-200">{doc.fileName}</span>
+                              </div>
+                              <a
+                                href={doc.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 transition hover:bg-sky-100 dark:border-sky-400/30 dark:bg-sky-400/10 dark:text-sky-300 dark:hover:bg-sky-400/20"
+                              >
+                                View
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -650,7 +798,7 @@ function DashboardHeader({
       <div className="rounded-[26px] border border-white/70 bg-white/76 px-4 py-3.5 shadow-2xl shadow-sky-950/8 backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/74 dark:shadow-black/30">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/30">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-linear-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/30">
               <Stethoscope className="h-6 w-6" />
             </div>
             <div>
@@ -663,7 +811,7 @@ function DashboardHeader({
           </div>
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <label className="group flex min-h-12 flex-1 items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/80 px-4 text-sm text-slate-500 shadow-sm transition focus-within:border-sky-300 focus-within:ring-4 focus-within:ring-sky-200/40 dark:border-white/10 dark:bg-white/8 dark:text-slate-300 dark:focus-within:ring-sky-400/10 md:w-[390px]">
+            <label className="group flex min-h-12 flex-1 items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/80 px-4 text-sm text-slate-500 shadow-sm transition focus-within:border-sky-300 focus-within:ring-4 focus-within:ring-sky-200/40 dark:border-white/10 dark:bg-white/8 dark:text-slate-300 dark:focus-within:ring-sky-400/10 md:w-97.5">
               <Search className="h-5 w-5 text-slate-400 transition group-focus-within:text-sky-500" />
               <input
                 className="w-full bg-transparent font-medium outline-none placeholder:text-slate-400"
@@ -676,7 +824,7 @@ function DashboardHeader({
                 <Home className="h-4 w-4" />
                 Home
               </Link>
-              <Button className="hidden h-12 rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500 px-4 shadow-lg shadow-sky-500/20 hover:from-sky-500 hover:to-emerald-400 sm:inline-flex" onClick={onCreateSession}>
+              <Button className="hidden h-12 rounded-2xl bg-linear-to-r from-sky-600 to-emerald-500 px-4 shadow-lg shadow-sky-500/20 hover:from-sky-500 hover:to-emerald-400 sm:inline-flex" onClick={onCreateSession}>
                 <Video className="h-4 w-4" />
                 Create Session
               </Button>
@@ -689,7 +837,7 @@ function DashboardHeader({
                   onClick={() => setProfileOpen((v) => !v)}
                   className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/80 px-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-lg dark:border-white/10 dark:bg-white/8"
                 >
-                  <div className="grid h-[34px] w-[34px] place-items-center rounded-xl bg-gradient-to-br from-sky-500 to-emerald-500 text-white text-sm font-bold">
+                  <div className="grid h-8.5 w-8.5 place-items-center rounded-xl bg-linear-to-br from-sky-500 to-emerald-500 text-white text-sm font-bold">
                     {user?.firstName?.charAt(0) || "D"}
                   </div>
                   <span className="hidden sm:block">
@@ -701,7 +849,7 @@ function DashboardHeader({
                 <AnimatePresence>{profileOpen && <ProfileMenu onLogout={handleLogout} />}</AnimatePresence>
               </div>
             </div>
-            <Button className="h-12 w-full rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500 shadow-lg shadow-sky-500/20 hover:from-sky-500 hover:to-emerald-400 sm:hidden" onClick={onCreateSession}>
+            <Button className="h-12 w-full rounded-2xl bg-linear-to-r from-sky-600 to-emerald-500 shadow-lg shadow-sky-500/20 hover:from-sky-500 hover:to-emerald-400 sm:hidden" onClick={onCreateSession}>
               <Video className="h-4 w-4" />
               Create Session
             </Button>
@@ -743,14 +891,18 @@ function DoctorProfileCard({
   displayName,
   userEmail,
   isLoading,
+  isDeleteLoading,
   onEdit,
+  onDelete,
   onCreateProfile,
 }: {
   profile: DoctorProfileResponse | null;
   displayName: string;
   userEmail: string;
   isLoading: boolean;
+  isDeleteLoading: boolean;
   onEdit: () => void;
+  onDelete: () => void;
   onCreateProfile: () => void;
 }) {
   const verificationColor =
@@ -796,7 +948,7 @@ function DoctorProfileCard({
           </p>
         </div>
         <Button
-          className="w-full rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500"
+          className="w-full rounded-2xl bg-linear-to-r from-sky-600 to-emerald-500"
           onClick={onCreateProfile}
         >
           <Plus className="h-4 w-4" />
@@ -822,8 +974,8 @@ function DoctorProfileCard({
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="absolute inset-0 rounded-[30px] bg-gradient-to-br from-sky-500 to-emerald-500 blur-md" />
-            <div className="relative grid h-24 w-24 place-items-center rounded-[30px] border-4 border-white bg-gradient-to-br from-sky-100 to-emerald-100 text-sky-600 shadow-xl dark:border-slate-900 dark:from-sky-500/20 dark:to-emerald-500/20 dark:text-sky-300">
+            <div className="absolute inset-0 rounded-[30px] bg-linear-to-br from-sky-500 to-emerald-500 blur-md" />
+            <div className="relative grid h-24 w-24 place-items-center rounded-[30px] border-4 border-white bg-linear-to-br from-sky-100 to-emerald-100 text-sky-600 shadow-xl dark:border-slate-900 dark:from-sky-500/20 dark:to-emerald-500/20 dark:text-sky-300">
               <Stethoscope className="h-10 w-10" />
             </div>
           </div>
@@ -845,7 +997,7 @@ function DoctorProfileCard({
 
       <div className="mt-5 grid gap-2.5">
         {details.map((detail) => (
-          <div key={detail.label} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-white/62 p-3 dark:border-white/10 dark:bg-white/[0.05]">
+          <div key={detail.label} className="flex gap-3 rounded-2xl border border-slate-200/70 bg-white/62 p-3 dark:border-white/10 dark:bg-white/5">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
               <detail.icon className="h-5 w-5" />
             </div>
@@ -857,10 +1009,20 @@ function DoctorProfileCard({
         ))}
       </div>
 
-      <Button className="mt-5 w-full rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200" onClick={onEdit}>
-        <Edit3 className="h-4 w-4" />
-        Edit Doctor Profile
-      </Button>
+      <div className="mt-5 flex flex-col gap-2.5">
+        <Button className="w-full rounded-2xl bg-slate-950 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200" onClick={onEdit}>
+          <Edit3 className="h-4 w-4" />
+          Edit Doctor Profile
+        </Button>
+        <Button
+          className="w-full rounded-2xl bg-red-600 hover:bg-red-800 dark:bg-red-700 dark:hover:bg-red-900 text-white disabled:opacity-50"
+          disabled={isDeleteLoading}
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+          {isDeleteLoading ? "Deleting..." : "Delete Profile"}
+        </Button>
+      </div>
     </Card>
   );
 }
@@ -868,9 +1030,9 @@ function DoctorProfileCard({
 //Stat Card
 function StatCard({ label, value, helper, icon: Icon, accent }: { label: string; value: string; helper: string; icon: Icon; accent: string }) {
   return (
-    <Card className="group h-full flex flex-col rounded-[24px] p-4 transition duration-300 hover:-translate-y-1 hover:border-sky-300/70 hover:shadow-2xl hover:shadow-sky-500/10">
+    <Card className="group h-full flex flex-col rounded-3xl p-4 transition duration-300 hover:-translate-y-1 hover:border-sky-300/70 hover:shadow-2xl hover:shadow-sky-500/10">
       <div className="flex items-start justify-between">
-        <div className={cn("grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-lg", accent)}>
+        <div className={cn("grid h-12 w-12 place-items-center rounded-2xl bg-linear-to-br text-white shadow-lg", accent)}>
           <Icon className="h-6 w-6" />
         </div>
         <MoreHorizontal className="h-5 w-5 text-slate-400 transition group-hover:text-sky-500" />
@@ -884,12 +1046,26 @@ function StatCard({ label, value, helper, icon: Icon, accent }: { label: string;
 
 // quick Actions
 function QuickActions({
+  onManageAvailability,
   onViewAppointments,
+  onJoinTelemedicine,
+  onViewPatientReports,
   onIssuePrescription,
 }: {
+  onManageAvailability: () => void;
   onViewAppointments: () => void;
+  onJoinTelemedicine: () => void;
+  onViewPatientReports: () => void;
   onIssuePrescription: () => void;
 }) {
+  const actionHandlers: Record<string, () => void> = {
+    "Manage Availability": onManageAvailability,
+    "View Appointments": onViewAppointments,
+    "Join Telemedicine": onJoinTelemedicine,
+    "View Patient Reports": onViewPatientReports,
+    "Issue Prescription": onIssuePrescription,
+  };
+
   return (
     <Card className="h-full flex flex-col rounded-[28px] p-5">
       <SectionTitle eyebrow="Quick actions" title="Clinical productivity shortcuts" />
@@ -897,17 +1073,10 @@ function QuickActions({
         {actions.map((action) => (
           <button
             key={action.label}
-            onClick={() => {
-              if (action.label === "View Appointments") {
-                onViewAppointments();
-              }
-              if (action.label === "Issue Prescription") {
-                onIssuePrescription();
-              }
-            }}
-            className="group h-full flex flex-col rounded-[24px] border border-slate-200/70 bg-white/68 p-4 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:border-sky-300 hover:bg-sky-50/80 hover:shadow-xl hover:shadow-sky-500/10 dark:border-white/10 dark:bg-white/[0.05] dark:hover:bg-sky-400/10"
+            onClick={actionHandlers[action.label]}
+            className="group h-full flex flex-col rounded-3xl border border-slate-200/70 bg-white/68 p-4 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:border-sky-300 hover:bg-sky-50/80 hover:shadow-xl hover:shadow-sky-500/10 dark:border-white/10 dark:bg-white/5 dark:hover:bg-sky-400/10"
           >
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25 transition group-hover:scale-105">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-linear-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25 transition group-hover:scale-105">
               <action.icon className="h-6 w-6" />
             </div>
             <p className="mt-4 text-sm font-bold">{action.label}</p>
@@ -1020,7 +1189,7 @@ function AvailabilityManagement({
         </Button>
       </div>
 
-      <div className="mt-5 rounded-[24px] bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 p-4 text-white shadow-2xl shadow-sky-950/20">
+      <div className="mt-5 rounded-3xl bg-linear-to-br from-slate-950 via-slate-900 to-sky-950 p-4 text-white shadow-2xl shadow-sky-950/20">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-bold text-sky-100">Current status</p>
@@ -1052,7 +1221,7 @@ function AvailabilityManagement({
           <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
             No availability slots yet
           </p>
-          <Button className="rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500" onClick={onAddSlot}>
+          <Button className="rounded-2xl bg-linear-to-r from-sky-600 to-emerald-500" onClick={onAddSlot}>
             <Plus className="h-4 w-4" />
             Add Slot
           </Button>
@@ -1060,7 +1229,7 @@ function AvailabilityManagement({
       ) : (
         <div className="mt-4 grid gap-2.5 overflow-y-auto">
           {displayDays.map(([day, daySlots]) => (
-            <div key={day} className="rounded-[22px] border border-slate-200/70 bg-white/62 p-3.5 dark:border-white/10 dark:bg-white/[0.05]">
+            <div key={day} className="rounded-[22px] border border-slate-200/70 bg-white/62 p-3.5 dark:border-white/10 dark:bg-white/5">
               <div className="flex items-center justify-between gap-3">
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-sky-500/10 text-sm font-bold text-sky-700 dark:text-sky-300">
                   {DAY_SHORT[day] || day.slice(0, 3)}
@@ -1079,7 +1248,7 @@ function AvailabilityManagement({
                       <button
                         type="button"
                         onClick={() => onEditSlot(slot)}
-                        className="grid h-7 w-7 place-items-center rounded-xl border border-slate-200/70 bg-white/80 text-slate-500 transition hover:border-sky-300 hover:text-sky-600 dark:border-white/10 dark:bg-white/[0.05] dark:hover:text-sky-300"
+                        className="grid h-7 w-7 place-items-center rounded-xl border border-slate-200/70 bg-white/80 text-slate-500 transition hover:border-sky-300 hover:text-sky-600 dark:border-white/10 dark:bg-white/5 dark:hover:text-sky-300"
                         aria-label="Edit slot"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
@@ -1087,7 +1256,7 @@ function AvailabilityManagement({
                       <button
                         type="button"
                         onClick={() => onDeleteSlot(slot.id)}
-                        className="grid h-7 w-7 place-items-center rounded-xl border border-slate-200/70 bg-white/80 text-slate-500 transition hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:bg-white/[0.05] dark:hover:text-rose-400"
+                        className="grid h-7 w-7 place-items-center rounded-xl border border-slate-200/70 bg-white/80 text-slate-500 transition hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:bg-white/5 dark:hover:text-rose-400"
                         aria-label="Delete slot"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -1132,7 +1301,7 @@ function AppointmentManagement({
       <SectionTitle eyebrow="Appointments" title="Consultation queue" />
       <div className="mt-5 grid gap-3.5">
         {isLoading && (
-          <div className="rounded-[22px] border border-slate-200/70 bg-white/62 p-4 text-sm font-semibold text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
+          <div className="rounded-[22px] border border-slate-200/70 bg-white/62 p-4 text-sm font-semibold text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
             Loading appointments...
           </div>
         )}
@@ -1142,10 +1311,10 @@ function AppointmentManagement({
           </div>
         )}
         {appointments.slice(0, 6).map((appointment) => (
-          <div key={appointment.id} className="rounded-[26px] border border-slate-200/70 bg-white/62 p-4 transition duration-300 hover:-translate-y-1 hover:border-sky-300 hover:shadow-xl hover:shadow-sky-500/10 dark:border-white/10 dark:bg-white/[0.05]">
+          <div key={appointment.id} className="rounded-[26px] border border-slate-200/70 bg-white/62 p-4 transition duration-300 hover:-translate-y-1 hover:border-sky-300 hover:shadow-xl hover:shadow-sky-500/10 dark:border-white/10 dark:bg-white/5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-sky-100 to-emerald-100 text-sky-600 dark:from-sky-500/20 dark:to-emerald-500/20 dark:text-sky-300">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-linear-to-br from-sky-100 to-emerald-100 text-sky-600 dark:from-sky-500/20 dark:to-emerald-500/20 dark:text-sky-300">
                   <UserRound className="h-6 w-6" />
                 </div>
                 <div>
@@ -1190,7 +1359,7 @@ function AppointmentManagement({
                       : "bg-amber-500/12 text-amber-700 dark:text-amber-300",
               )}>{appointment.status}</span>
             </div>
-            <div className="mt-4 rounded-[22px] bg-slate-950/[0.03] px-4 py-3 text-sm text-slate-600 dark:bg-white/[0.04] dark:text-slate-300">
+            <div className="mt-4 rounded-[22px] bg-slate-950/3 px-4 py-3 text-sm text-slate-600 dark:bg-white/4 dark:text-slate-300">
               <p className="font-bold text-slate-700 dark:text-slate-100">Patient visit summary</p>
               <p className="mt-1">Patient ID: {appointment.patientId}</p>
               <p className="mt-1">Doctor ID: {appointment.doctorId}</p>
@@ -1278,7 +1447,7 @@ function TelemedicineSessions({
             Create Session
           </Button>
           <Button
-            className="rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500"
+            className="rounded-2xl bg-linear-to-r from-sky-600 to-emerald-500"
             disabled={!nextJoinableSession}
             onClick={() => nextJoinableSession && onJoinSession(nextJoinableSession)}
           >
@@ -1293,7 +1462,7 @@ function TelemedicineSessions({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease }}
-          className="rounded-[24px] border border-sky-200/80 bg-sky-50/75 p-4 shadow-sm dark:border-sky-300/20 dark:bg-sky-400/10"
+          className="rounded-3xl border border-sky-200/80 bg-sky-50/75 p-4 shadow-sm dark:border-sky-300/20 dark:bg-sky-400/10"
         >
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -1303,7 +1472,7 @@ function TelemedicineSessions({
                 Select a patient, reserve a virtual slot, and generate a meeting room.
               </p>
             </div>
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25">
               <CalendarClock className="h-6 w-6" />
             </div>
           </div>
@@ -1315,14 +1484,14 @@ function TelemedicineSessions({
               { label: "Patients loaded", value: String(patientOptions.length) },
               { label: "Gateway route", value: "/v1/telemedicine-service" },
             ].map((field) => (
-              <div key={field.label} className="rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.06]">
+              <div key={field.label} className="rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/6">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{field.label}</p>
                 <p className="mt-1 truncate text-sm font-bold text-slate-700 dark:text-slate-100">{field.value}</p>
               </div>
             ))}
           </div>
 
-          <Button className="mt-4 w-full rounded-2xl bg-gradient-to-r from-sky-600 to-emerald-500" onClick={onCreateSession}>
+          <Button className="mt-4 w-full rounded-2xl bg-linear-to-r from-sky-600 to-emerald-500" onClick={onCreateSession}>
             <Video className="h-4 w-4" />
             Create Session With Patient
           </Button>
@@ -1330,12 +1499,12 @@ function TelemedicineSessions({
 
         <div className="grid gap-3.5 lg:grid-cols-3 xl:grid-cols-1">
           {isLoading && (
-            <div className="rounded-[24px] border border-slate-200/70 bg-white/64 p-4 text-sm font-bold text-slate-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300">
+            <div className="rounded-3xl border border-slate-200/70 bg-white/64 p-4 text-sm font-bold text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
               Loading sessions...
             </div>
           )}
           {!isLoading && latestSessions.map((session) => (
-            <div key={session.id} className="relative overflow-hidden rounded-[24px] bg-slate-950 p-4 text-white shadow-2xl shadow-sky-950/15 transition duration-300 hover:-translate-y-1">
+            <div key={session.id} className="relative overflow-hidden rounded-3xl bg-slate-950 p-4 text-white shadow-2xl shadow-sky-950/15 transition duration-300 hover:-translate-y-1">
               <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-sky-400/25 blur-2xl" />
               <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-emerald-400/20 blur-2xl" />
               <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between xl:flex-row">
@@ -1360,7 +1529,7 @@ function TelemedicineSessions({
             </div>
           ))}
           {!isLoading && sessions.length === 0 && (
-            <div className="rounded-[24px] border border-dashed border-sky-300 bg-sky-50/70 p-4 text-sm font-semibold text-slate-500 dark:border-sky-300/30 dark:bg-sky-400/10 dark:text-slate-300">
+            <div className="rounded-3xl border border-dashed border-sky-300 bg-sky-50/70 p-4 text-sm font-semibold text-slate-500 dark:border-sky-300/30 dark:bg-sky-400/10 dark:text-slate-300">
               No online sessions yet.
             </div>
           )}
@@ -1396,9 +1565,9 @@ function ProductivityShortcuts({ onIssuePrescription }: { onIssuePrescription: (
 
 function ShortcutCard({ icon: Icon, title, description, action, onClick }: { icon: Icon; title: string; description: string; action: string; onClick?: () => void }) {
   return (
-    <div className="rounded-[24px] border border-slate-200/70 bg-white/64 p-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-500/10 dark:border-white/10 dark:bg-white/[0.05]">
+    <div className="rounded-3xl border border-slate-200/70 bg-white/64 p-4 transition duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-500/10 dark:border-white/10 dark:bg-white/5">
       <div className="flex items-start gap-4">
-        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/20">
+        <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/20">
           <Icon className="h-7 w-7" />
         </div>
         <div>
@@ -1425,7 +1594,7 @@ function PerformanceActivity() {
             { label: "Avg consult", value: "18m" },
             { label: "Satisfaction", value: "4.9" },
           ].map((item) => (
-            <div key={item.label} className="rounded-2xl border border-slate-200/70 bg-white/64 px-4 py-3 text-center dark:border-white/10 dark:bg-white/[0.05]">
+            <div key={item.label} className="rounded-2xl border border-slate-200/70 bg-white/64 px-4 py-3 text-center dark:border-white/10 dark:bg-white/5">
               <p className="text-lg font-bold">{item.value}</p>
               <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{item.label}</p>
             </div>
@@ -1434,7 +1603,7 @@ function PerformanceActivity() {
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[0.45fr_0.55fr]">
-        <div className="rounded-[24px] border border-slate-200/70 bg-white/62 p-4 dark:border-white/10 dark:bg-white/[0.05]">
+        <div className="rounded-3xl border border-slate-200/70 bg-white/62 p-4 dark:border-white/10 dark:bg-white/5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Appointment trend</p>
@@ -1447,7 +1616,7 @@ function PerformanceActivity() {
           <div className="mt-6 flex h-28 items-end gap-2">
             {[42, 68, 54, 82, 64, 92, 76].map((height, index) => (
               <div key={index} className="flex flex-1 items-end rounded-full bg-slate-950/5 p-1 dark:bg-white/10">
-                <div className="w-full rounded-full bg-gradient-to-t from-sky-600 to-emerald-400" style={{ height: `${height}%` }} />
+                <div className="w-full rounded-full bg-linear-to-t from-sky-600 to-emerald-400" style={{ height: `${height}%` }} />
               </div>
             ))}
           </div>
@@ -1457,11 +1626,11 @@ function PerformanceActivity() {
         <div className="space-y-1">
           {activities.map((activity, index) => (
             <div key={activity.title} className="relative flex gap-4 pb-5 last:pb-0">
-              {index !== activities.length - 1 && <div className="absolute left-6 top-12 h-[calc(100%-3rem)] w-px bg-gradient-to-b from-sky-300 to-emerald-300 dark:from-sky-400/40 dark:to-emerald-400/40" />}
-              <div className="relative z-10 grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25">
+              {index !== activities.length - 1 && <div className="absolute left-6 top-12 h-[calc(100%-3rem)] w-px bg-linear-to-b from-sky-300 to-emerald-300 dark:from-sky-400/40 dark:to-emerald-400/40" />}
+              <div className="relative z-10 grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-sky-600 to-emerald-500 text-white shadow-lg shadow-sky-500/25">
                 <activity.icon className="h-5 w-5" />
               </div>
-              <div className="min-w-0 flex-1 rounded-[24px] border border-slate-200/70 bg-white/58 p-4 dark:border-white/10 dark:bg-white/[0.05]">
+              <div className="min-w-0 flex-1 rounded-3xl border border-slate-200/70 bg-white/58 p-4 dark:border-white/10 dark:bg-white/5">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="font-bold">{activity.title}</h3>
                   <span className="text-xs font-bold text-sky-600 dark:text-sky-300">{activity.time}</span>
