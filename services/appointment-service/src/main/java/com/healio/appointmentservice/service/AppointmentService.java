@@ -4,6 +4,8 @@ import com.healio.appointmentservice.client.DoctorServiceClient;
 import com.healio.appointmentservice.client.PatientServiceClient;
 import com.healio.appointmentservice.dto.*;
 import com.healio.appointmentservice.enums.AppointmentStatus;
+import com.healio.appointmentservice.enums.PaymentStatus;
+import com.healio.appointmentservice.exc.GenericErrorResponse;
 import com.healio.appointmentservice.exc.NotFoundException;
 import com.healio.appointmentservice.model.Appointment;
 import com.healio.appointmentservice.model.Prescription;
@@ -16,13 +18,19 @@ import com.healio.appointmentservice.request.AppointmentUpdateRequest;
 import com.healio.appointmentservice.request.PrescriptionCreateRequest;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,6 +49,13 @@ public class AppointmentService {
     private final PatientServiceClient patientServiceClient;
     private final DoctorServiceClient doctorServiceClient;
     private final ModelMapper modelMapper;
+    private final PayPalService payPalService;
+
+    @Value("${appointment.default-consultation-fee:50.00}")
+    private BigDecimal defaultConsultationFee;
+
+    @Value("${appointment.default-currency:USD}")
+    private String defaultCurrency;
 
     public AppointmentResponseDto createAppointment(AppointmentCreateRequest request) {
         ensurePatientExists(request.getPatientId());
@@ -54,6 +69,9 @@ public class AppointmentService {
                 .appointmentTime(request.getAppointmentTime())
                 .status(AppointmentStatus.PENDING)
                 .reason(request.getReason())
+                .consultationFee(resolveConsultationFee(request.getConsultationFee()))
+                .currency(resolveCurrency(request.getCurrency()))
+                .paymentStatus(PaymentStatus.UNPAID)
                 .build();
 
         return toResponse(appointmentRepository.save(appointment));
@@ -65,25 +83,45 @@ public class AppointmentService {
 
     public List<AppointmentResponseDto> getAllAppointments() {
         return appointmentRepository.findAllByOrderByAppointmentDateDescAppointmentTimeDesc().stream()
-                .map(this::toResponse)
+                .map(this::toResponseLite)
                 .collect(Collectors.toList());
+    }
+
+    public PaginatedAppointmentResponseDto getAllAppointmentsPaginated(Pageable pageable) {
+        Page<Appointment> page = appointmentRepository.findAllByOrderByAppointmentDateDescAppointmentTimeDesc(pageable);
+        return toPagedResponse(page);
+    }
+
+    public PaginatedAppointmentResponseDto getAppointmentsByPatientIdPaginated(String patientId, Pageable pageable) {
+        Page<Appointment> page = appointmentRepository.findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(patientId, pageable);
+        return toPagedResponse(page);
+    }
+
+    public PaginatedAppointmentResponseDto getAppointmentsByDoctorIdPaginated(String doctorId, Pageable pageable) {
+        Page<Appointment> page = appointmentRepository.findByDoctorIdOrderByAppointmentDateDescAppointmentTimeDesc(doctorId, pageable);
+        return toPagedResponse(page);
+    }
+
+    public PaginatedAppointmentResponseDto getAppointmentsByStatusPaginated(AppointmentStatus status, Pageable pageable) {
+        Page<Appointment> page = appointmentRepository.findByStatusOrderByAppointmentDateDescAppointmentTimeDesc(status, pageable);
+        return toPagedResponse(page);
     }
 
     public List<AppointmentResponseDto> getAppointmentsByPatientId(String patientId) {
         return appointmentRepository.findByPatientIdOrderByAppointmentDateDescAppointmentTimeDesc(patientId).stream()
-                .map(this::toResponse)
+                .map(this::toResponseLite)
                 .collect(Collectors.toList());
     }
 
     public List<AppointmentResponseDto> getAppointmentsByDoctorId(String doctorId) {
         return appointmentRepository.findByDoctorIdOrderByAppointmentDateDescAppointmentTimeDesc(doctorId).stream()
-                .map(this::toResponse)
+                .map(this::toResponseLite)
                 .collect(Collectors.toList());
     }
 
     public List<AppointmentResponseDto> getAppointmentsByStatus(AppointmentStatus status) {
         return appointmentRepository.findByStatusOrderByAppointmentDateDescAppointmentTimeDesc(status).stream()
-                .map(this::toResponse)
+                .map(this::toResponseLite)
                 .collect(Collectors.toList());
     }
 
@@ -144,6 +182,71 @@ public class AppointmentService {
                 .build());
     }
 
+    public PayPalOrderResponseDto createPayPalOrder(String appointmentId) {
+        Appointment appointment = findAppointmentById(appointmentId);
+        BigDecimal consultationFee = appointment.getConsultationFee() != null
+                ? appointment.getConsultationFee()
+                : resolveConsultationFee(null);
+        String currency = appointment.getCurrency() != null && !appointment.getCurrency().isBlank()
+                ? resolveCurrency(appointment.getCurrency())
+                : resolveCurrency(null);
+
+        appointment.setConsultationFee(consultationFee);
+        appointment.setCurrency(currency);
+        if (appointment.getPaymentStatus() == null) {
+            appointment.setPaymentStatus(PaymentStatus.UNPAID);
+        }
+
+        if (appointment.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new GenericErrorResponse("Appointment is already paid", HttpStatus.CONFLICT);
+        }
+
+        PayPalService.PayPalOrderData orderData = payPalService.createOrder(
+                appointment.getId(),
+                consultationFee,
+                currency
+        );
+
+        appointment.setPaypalOrderId(orderData.orderId());
+        appointment.setPaymentStatus(PaymentStatus.PENDING);
+        appointmentRepository.save(appointment);
+
+        return PayPalOrderResponseDto.builder()
+                .appointmentId(appointment.getId())
+                .orderId(orderData.orderId())
+                .orderStatus(orderData.status())
+                .approveUrl(orderData.approveUrl())
+                .amount(consultationFee)
+                .currency(currency)
+                .paymentStatus(appointment.getPaymentStatus())
+                .build();
+    }
+
+    public AppointmentResponseDto capturePayPalOrder(String appointmentId, String orderId) {
+        Appointment appointment = findAppointmentById(appointmentId);
+
+        if (appointment.getPaypalOrderId() == null || appointment.getPaypalOrderId().isBlank()) {
+            throw new GenericErrorResponse("No PayPal order exists for this appointment", HttpStatus.BAD_REQUEST);
+        }
+
+        if (!appointment.getPaypalOrderId().equals(orderId)) {
+            throw new GenericErrorResponse("PayPal order does not match this appointment", HttpStatus.BAD_REQUEST);
+        }
+
+        PayPalService.PayPalCaptureData captureData = payPalService.captureOrder(orderId);
+        if ("COMPLETED".equalsIgnoreCase(captureData.status())) {
+            appointment.setPaymentStatus(PaymentStatus.PAID);
+            appointment.setPaypalCaptureId(captureData.captureId());
+            appointment.setPaymentTimestamp(LocalDateTime.now());
+        } else {
+            appointment.setPaymentStatus(PaymentStatus.FAILED);
+            appointment.setPaypalCaptureId(null);
+            appointment.setPaymentTimestamp(null);
+        }
+
+        return toResponse(appointmentRepository.save(appointment));
+    }
+
     public void deleteAppointment(String id) {
         Appointment appointment = findAppointmentById(id);
         appointmentRepository.delete(appointment);
@@ -196,6 +299,23 @@ public class AppointmentService {
                 .collect(Collectors.toList());
     }
 
+    public PaginatedPrescriptionResponseDto getPrescriptionsByPatientIdPaginated(String patientId, Pageable pageable) {
+        Page<Prescription> page = prescriptionRepository.findByPatientIdOrderByIssuedDateDesc(patientId, pageable);
+        List<PrescriptionResponseDto> content = page.getContent().stream()
+                .map(this::toPrescriptionResponse)
+                .collect(Collectors.toList());
+
+        return PaginatedPrescriptionResponseDto.builder()
+                .content(content)
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .isFirst(page.isFirst())
+                .isLast(page.isLast())
+                .build();
+    }
+
     private Appointment findAppointmentById(String id) {
         return appointmentRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Appointment not found with id: " + id));
@@ -241,8 +361,37 @@ public class AppointmentService {
         }
     }
 
+    private BigDecimal resolveConsultationFee(BigDecimal requestedFee) {
+        BigDecimal fee = requestedFee != null ? requestedFee : defaultConsultationFee;
+        if (fee == null || fee.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new GenericErrorResponse("Consultation fee must be greater than zero", HttpStatus.BAD_REQUEST);
+        }
+        return fee.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private String resolveCurrency(String requestedCurrency) {
+        String currency = (requestedCurrency == null || requestedCurrency.isBlank())
+                ? defaultCurrency
+                : requestedCurrency;
+
+        if (currency == null || currency.isBlank()) {
+            throw new GenericErrorResponse("Currency is required", HttpStatus.BAD_REQUEST);
+        }
+
+        return currency.trim().toUpperCase(Locale.ROOT);
+    }
+
     private AppointmentResponseDto toResponse(Appointment appointment) {
         AppointmentResponseDto response = modelMapper.map(appointment, AppointmentResponseDto.class);
+        if (response.getPaymentStatus() == null) {
+            response.setPaymentStatus(PaymentStatus.UNPAID);
+        }
+        if (response.getConsultationFee() == null) {
+            response.setConsultationFee(resolveConsultationFee(null));
+        }
+        if (response.getCurrency() == null || response.getCurrency().isBlank()) {
+            response.setCurrency(resolveCurrency(null));
+        }
         response.setPatient(fetchPatientProfile(appointment.getPatientId()));
         response.setDoctor(fetchDoctorProfile(appointment.getDoctorId()));
 
@@ -254,6 +403,107 @@ public class AppointmentService {
         }
 
         return response;
+    }
+
+    private AppointmentResponseDto toResponseLite(Appointment appointment) {
+        AppointmentResponseDto response = modelMapper.map(appointment, AppointmentResponseDto.class);
+        if (response.getPaymentStatus() == null) {
+            response.setPaymentStatus(PaymentStatus.UNPAID);
+        }
+        if (response.getConsultationFee() == null) {
+            response.setConsultationFee(resolveConsultationFee(null));
+        }
+        if (response.getCurrency() == null || response.getCurrency().isBlank()) {
+            response.setCurrency(resolveCurrency(null));
+        }
+        // Don't fetch patient/doctor profiles here to avoid N+1 queries
+        // Set null to indicate they need to be fetched separately if needed
+        return response;
+    }
+
+    private PaginatedAppointmentResponseDto toPagedResponse(Page<Appointment> page) {
+        List<AppointmentResponseDto> content = page.getContent().stream()
+                .map(this::toResponseLite)
+                .collect(Collectors.toList());
+
+        return PaginatedAppointmentResponseDto.builder()
+                .content(content)
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .isFirst(page.isFirst())
+                .isLast(page.isLast())
+                .build();
+    }
+
+    public List<AppointmentResponseDto> enrichAppointmentsWithProfilesAndPrescriptions(List<AppointmentResponseDto> appointments) {
+        if (appointments == null || appointments.isEmpty()) {
+            return appointments;
+        }
+
+        // Extract unique patient and doctor IDs
+        Set<String> patientIds = new HashSet<>();
+        Set<String> doctorIds = new HashSet<>();
+        
+        for (AppointmentResponseDto appt : appointments) {
+            patientIds.add(appt.getPatientId());
+            doctorIds.add(appt.getDoctorId());
+        }
+
+        // Batch fetch patient and doctor profiles
+        Map<String, PatientProfileResponseDto> patientMap = batchFetchPatientProfiles(new ArrayList<>(patientIds));
+        Map<String, DoctorProfileResponseDto> doctorMap = batchFetchDoctorProfiles(new ArrayList<>(doctorIds));
+
+        // Enrich appointments with fetched profiles and prescriptions
+        for (AppointmentResponseDto appt : appointments) {
+            appt.setPatient(patientMap.get(appt.getPatientId()));
+            appt.setDoctor(doctorMap.get(appt.getDoctorId()));
+            
+            // Fetch prescription if appointment has one
+            prescriptionRepository.findByAppointmentId(appt.getId())
+                    .ifPresent(prescription -> appt.setPrescription(toPrescriptionResponse(prescription)));
+        }
+
+        return appointments;
+    }
+
+    private Map<String, PatientProfileResponseDto> batchFetchPatientProfiles(List<String> patientIds) {
+        Map<String, PatientProfileResponseDto> result = new HashMap<>();
+        if (patientIds == null || patientIds.isEmpty()) {
+            return result;
+        }
+
+        for (String patientId : patientIds) {
+            try {
+                PatientProfileResponseDto patient = patientServiceClient.getPatientByUserId(patientId).getBody();
+                if (patient != null) {
+                    result.put(patientId, patient);
+                }
+            } catch (Exception e) {
+                // Log error but continue processing other patients
+            }
+        }
+        return result;
+    }
+
+    private Map<String, DoctorProfileResponseDto> batchFetchDoctorProfiles(List<String> doctorIds) {
+        Map<String, DoctorProfileResponseDto> result = new HashMap<>();
+        if (doctorIds == null || doctorIds.isEmpty()) {
+            return result;
+        }
+
+        for (String doctorId : doctorIds) {
+            try {
+                DoctorProfileResponseDto doctor = doctorServiceClient.getDoctorByUserId(doctorId).getBody();
+                if (doctor != null) {
+                    result.put(doctorId, doctor);
+                }
+            } catch (Exception e) {
+                // Log error but continue processing other doctors
+            }
+        }
+        return result;
     }
 
     private PrescriptionResponseDto toPrescriptionResponse(Prescription prescription) {

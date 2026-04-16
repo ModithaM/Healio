@@ -74,6 +74,10 @@ cp client/healio/sample.env.local client/healio/.env.local
 
 Edit these files with your actual configuration values.
 
+PayPal sandbox setup for appointments requires:
+- `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` in root `.env` (used by `appointment-service`)
+- `NEXT_PUBLIC_PAYPAL_CLIENT_ID` in `client/healio/.env.local` (used by patient dashboard PayPal checkout UI)
+
 ### Installation & Build
 
 #### Install all dependencies (services and client):
