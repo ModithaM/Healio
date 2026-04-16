@@ -105,6 +105,7 @@ export default function PrescriptionsPage() {
                 <tr className="border-b border-slate-200/70 bg-slate-950/[0.03] text-left text-xs font-bold uppercase tracking-[0.18em] text-slate-400 dark:border-white/10 dark:bg-white/[0.04]">
                   <th className="px-4 py-3">Patient ID</th>
                   <th className="px-4 py-3">Doctor ID</th>
+                  <th className="px-4 py-3">Appointment ID</th>
                   <th className="px-4 py-3">Diagnosis</th>
                   <th className="px-4 py-3">Issued Date</th>
                   <th className="px-4 py-3">Medicines</th>
@@ -114,7 +115,7 @@ export default function PrescriptionsPage() {
               <tbody>
                 {isLoading && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-5 text-sm font-semibold text-slate-500 dark:text-slate-300">
+                    <td colSpan={7} className="px-4 py-5 text-sm font-semibold text-slate-500 dark:text-slate-300">
                       Loading prescriptions...
                     </td>
                   </tr>
@@ -122,7 +123,7 @@ export default function PrescriptionsPage() {
 
                 {!isLoading && filteredPrescriptions.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-5 text-sm font-semibold text-slate-500 dark:text-slate-300">
+                    <td colSpan={7} className="px-4 py-5 text-sm font-semibold text-slate-500 dark:text-slate-300">
                       No prescriptions available.
                     </td>
                   </tr>
@@ -135,6 +136,7 @@ export default function PrescriptionsPage() {
                         {item.patientId.slice(0, 12)}
                       </td>
                       <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{item.doctorId.slice(0, 12)}</td>
+                      <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{item.appointmentId.slice(0, 12)}</td>
                       <td className="px-4 py-4 text-sm font-medium text-slate-700 dark:text-slate-300">{item.diagnosis || "N/A"}</td>
                       <td className="px-4 py-4 text-xs text-slate-500 dark:text-slate-400">{item.issuedDate}</td>
                       <td className="px-4 py-4">
@@ -200,7 +202,7 @@ function PrescriptionDetailsModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
-      <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-2xl font-bold">Prescription Details</h3>
@@ -223,6 +225,10 @@ function PrescriptionDetailsModal({
           <div>
             <p className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">Doctor ID</p>
             <p className="mt-2 font-semibold text-slate-900 dark:text-white">{prescription.doctorId}</p>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">Appointment ID</p>
+            <p className="mt-2 font-semibold text-slate-900 dark:text-white">{prescription.appointmentId}</p>
           </div>
           <div className="sm:col-span-2">
             <p className="text-xs font-bold uppercase text-slate-600 dark:text-slate-400">Diagnosis</p>
