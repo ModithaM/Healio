@@ -8,6 +8,9 @@ services:
     environment:
       - SERVER_PORT=8888
       - SPRING_PROFILES_ACTIVE=docker
+      - GIT_REPO=${GIT_REPO}
+      - GIT_USERNAME=${GIT_USERNAME}
+      - GIT_PASSWORD=${GIT_PASSWORD}
     ports:
       - "8888:8888"
     healthcheck:
@@ -143,6 +146,11 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
       - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - PAYPAL_BASE_URL=${PAYPAL_BASE_URL}
+      - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
+      - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET}
+      - APPOINTMENT_DEFAULT_CONSULTATION_FEE=${APPOINTMENT_DEFAULT_CONSULTATION_FEE}
+      - APPOINTMENT_DEFAULT_CURRENCY=${APPOINTMENT_DEFAULT_CURRENCY}
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -166,6 +174,9 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
       - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - AGORA_APP_ID=${AGORA_APP_ID}
+      - AGORA_APP_CERTIFICATE=${AGORA_APP_CERTIFICATE}
+      - AGORA_TOKEN_EXPIRATION_SECONDS=${AGORA_TOKEN_EXPIRATION_SECONDS}
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
       interval: 10s
@@ -212,6 +223,7 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
       - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/actuator/health"]
       interval: 10s
