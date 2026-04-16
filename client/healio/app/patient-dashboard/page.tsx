@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import {
   Activity,
   CalendarClock,
@@ -31,6 +32,7 @@ import {
   UserRound,
   Video,
   XCircle,
+  Wallet,
 } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
@@ -53,7 +55,9 @@ import {
   AppointmentResponse,
   CreateAppointmentPayload,
   PrescriptionResponse,
+  capturePayPalOrder,
   cancelAppointment,
+  createPayPalOrder,
   createAppointment,
   getAppointmentsByPatientId,
   getPrescriptionsByPatientId,
@@ -121,7 +125,9 @@ export default function PatientDashboardPage() {
   const [selectedPrescription, setSelectedPrescription] = useState<PrescriptionResponse | null>(null);
   const [doctorOptions, setDoctorOptions] = useState<Array<{ id: string; name: string }>>([]);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [payingAppointment, setPayingAppointment] = useState<AppointmentResponse | null>(null);
   const [isAppointmentsLoading, setIsAppointmentsLoading] = useState(false);
+  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
   const user = useAuthStore((state) => state.user);
   const patientId = user?.userId ?? patient.patientId;
   const {
@@ -277,6 +283,14 @@ export default function PatientDashboardPage() {
     }
   };
 
+  const handleCapturePayPalOrder = async (appointmentId: string, orderId: string) => {
+    const result = await capturePayPalOrder(appointmentId, orderId);
+    if (result.success) {
+      setPayingAppointment(null);
+      await loadAppointmentData();
+    }
+  };
+
   const dashboardStats = useMemo(() => {
     const upcoming = appointments.filter((item) => ["PENDING", "CONFIRMED"].includes(item.status)).length;
     const completed = appointments.filter((item) => item.status === "COMPLETED").length;
@@ -394,6 +408,8 @@ export default function PatientDashboardPage() {
                 onJoinSession={handleJoinSession}
                 onCancelAppointment={handleCancelAppointment}
                 onRescheduleAppointment={handleRescheduleAppointment}
+                onPayAppointment={(appointment) => setPayingAppointment(appointment)}
+                canPayWithPayPal={Boolean(paypalClientId)}
               />
             </motion.div>
             <motion.div variants={fadeUp} className="h-full md:col-span-1 xl:col-span-4">
@@ -423,14 +439,23 @@ export default function PatientDashboardPage() {
             }}
           />
         )}
-        {isBookingModalOpen && (
-          <BookingModal
+      {isBookingModalOpen && (
+        <BookingModal
             doctors={doctorOptions}
             patientId={user?.userId ?? ""}
             onClose={() => setIsBookingModalOpen(false)}
             onSubmit={handleBookAppointment}
-          />
-        )}
+        />
+      )}
+
+      {payingAppointment && (
+        <PayPalPaymentModal
+          appointment={payingAppointment}
+          clientId={paypalClientId}
+          onClose={() => setPayingAppointment(null)}
+          onCapture={(orderId) => handleCapturePayPalOrder(payingAppointment.id, orderId)}
+        />
+      )}
         {selectedPrescription && (
           <PrescriptionDetailsModal
             prescription={selectedPrescription}
@@ -757,6 +782,8 @@ function AppointmentsSection({
   onJoinSession,
   onCancelAppointment,
   onRescheduleAppointment,
+  onPayAppointment,
+  canPayWithPayPal,
 }: {
   appointments: AppointmentResponse[];
   isLoading: boolean;
@@ -766,6 +793,8 @@ function AppointmentsSection({
   onJoinSession: (session: TelemedicineSession) => void;
   onCancelAppointment: (appointmentId: string) => void;
   onRescheduleAppointment: (appointment: AppointmentResponse) => void;
+  onPayAppointment: (appointment: AppointmentResponse) => void;
+  canPayWithPayPal: boolean;
 }) {
   const sortedTelemedicineSessions = useMemo(() => {
     const statusPriority: Record<TelemedicineSession["status"], number> = {
@@ -820,7 +849,12 @@ function AppointmentsSection({
                 <h3 className="font-bold">
                   {appointment.doctor?.userInfo?.firstName || "Doctor"} {appointment.doctor?.userInfo?.lastName || ""}
                 </h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{appointment.doctor?.specialization || "General"}</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {appointment.doctor?.specialization || "General"}
+                </p>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {appointment.doctor?.userInfo?.email || "Doctor contact not available"}
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -840,11 +874,47 @@ function AppointmentsSection({
               )}>
                 {appointment.status}
               </span>
+              <span className={cn(
+                "rounded-2xl px-3 py-2 text-sm font-bold",
+                (appointment.paymentStatus ?? "UNPAID") === "PAID"
+                  ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+                  : (appointment.paymentStatus ?? "UNPAID") === "PENDING"
+                    ? "bg-amber-500/12 text-amber-700 dark:text-amber-300"
+                    : (appointment.paymentStatus ?? "UNPAID") === "FAILED"
+                      ? "bg-rose-500/12 text-rose-700 dark:text-rose-300"
+                      : "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300",
+              )}>
+                Payment: {appointment.paymentStatus ?? "UNPAID"}
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-2xl bg-slate-950/5 px-3 py-2 text-sm font-bold dark:bg-white/10">
+                <Wallet className="h-4 w-4 text-sky-500" />
+                {(appointment.consultationFee ?? 0).toFixed(2)} {appointment.currency ?? "USD"}
+              </span>
+            </div>
+            <div className="rounded-[22px] bg-slate-950/[0.03] px-4 py-3 text-sm text-slate-600 dark:bg-white/[0.04] dark:text-slate-300 lg:col-span-2">
+              <p className="font-bold text-slate-700 dark:text-slate-100">Visit details</p>
+              <p className="mt-1">Reason: {appointment.reason || "General consultation"}</p>
+              <p className="mt-1">
+                {appointment.status === "CANCELLED" && appointment.cancelReason
+                  ? `Cancellation reason: ${appointment.cancelReason}`
+                  : `Appointment ID: ${appointment.id}`}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <Button variant="outline" className="rounded-2xl" onClick={() => onRescheduleAppointment(appointment)}>
                 Reschedule
               </Button>
+              {canPayWithPayPal &&
+                (appointment.paymentStatus ?? "UNPAID") !== "PAID" &&
+                ["PENDING", "CONFIRMED"].includes(appointment.status) && (
+                  <Button
+                    variant="outline"
+                    className="rounded-2xl"
+                    onClick={() => onPayAppointment(appointment)}
+                  >
+                    Pay with PayPal
+                  </Button>
+                )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -943,8 +1013,9 @@ function PrescriptionSection({
                   <Pill className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold">Doctor ID: {prescription.doctorId}</h3>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{prescription.issuedDate}</p>
+                  <h3 className="font-bold">Prescription #{prescription.id.slice(0, 8)}</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Issued {prescription.issuedDate}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Doctor ID: {prescription.doctorId}</p>
                 </div>
               </div>
               <Button variant="outline" className="rounded-2xl" onClick={() => onViewDetails(prescription)}>
@@ -955,6 +1026,10 @@ function PrescriptionSection({
               {prescription.diagnosis}
               {prescription.notes ? ` - ${prescription.notes}` : ""}
             </p>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500 dark:text-slate-400">
+              <span className="rounded-full bg-slate-950/5 px-3 py-1.5 dark:bg-white/10">Appointment ID: {prescription.appointmentId}</span>
+              <span className="rounded-full bg-slate-950/5 px-3 py-1.5 dark:bg-white/10">Medicines: {prescription.items.length}</span>
+            </div>
           </div>
         ))}
       </div>
@@ -971,13 +1046,27 @@ function PrescriptionDetailsModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
-      <div className="w-full max-w-2xl rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-xl font-bold">Prescription Details</h3>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Issued: {prescription.issuedDate}</p>
           </div>
           <Button variant="outline" className="rounded-2xl" onClick={onClose}>Close</Button>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {[
+            { label: "Prescription ID", value: prescription.id },
+            { label: "Appointment ID", value: prescription.appointmentId },
+            { label: "Doctor ID", value: prescription.doctorId },
+            { label: "Patient ID", value: prescription.patientId },
+          ].map((field) => (
+            <div key={field.label} className="rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{field.label}</p>
+              <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">{field.value}</p>
+            </div>
+          ))}
         </div>
 
         <div className="mt-4 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
@@ -1028,10 +1117,12 @@ function BookingModal({
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
   const [reason, setReason] = useState("");
+  const consultationFee = "50.00";
+  const currency = "USD";
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
-      <div className="w-full max-w-lg rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
         <h3 className="text-xl font-bold">Book Appointment</h3>
         <div className="mt-4 grid gap-3">
           <select
@@ -1064,6 +1155,28 @@ function BookingModal({
             placeholder="Reason"
             className="min-h-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-slate-800"
           />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={consultationFee}
+              readOnly
+              disabled
+              aria-readonly="true"
+              placeholder="Consultation fee"
+              className="h-11 rounded-xl border border-slate-200 bg-slate-100 px-3 text-sm text-slate-600 dark:border-white/10 dark:bg-slate-700 dark:text-slate-300"
+            />
+            <input
+              value={currency}
+              readOnly
+              disabled
+              aria-readonly="true"
+              placeholder="Currency (e.g. USD)"
+              className="h-11 rounded-xl border border-slate-200 bg-slate-100 px-3 text-sm uppercase text-slate-600 dark:border-white/10 dark:bg-slate-700 dark:text-slate-300"
+              maxLength={10}
+            />
+          </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="outline" className="rounded-2xl" onClick={onClose}>
@@ -1077,6 +1190,12 @@ function BookingModal({
                 return;
               }
 
+              const parsedFee = Number.parseFloat(consultationFee);
+              if (!Number.isFinite(parsedFee) || parsedFee <= 0) {
+                ToastUtils.error("Consultation fee must be greater than zero.");
+                return;
+              }
+
               const normalizedTime = appointmentTime.length === 5 ? `${appointmentTime}:00` : appointmentTime;
               void onSubmit({
                 patientId,
@@ -1084,10 +1203,90 @@ function BookingModal({
                 appointmentDate,
                 appointmentTime: normalizedTime,
                 reason: reason || undefined,
+                consultationFee: parsedFee,
+                currency: currency || "USD",
               });
             }}
           >
             Confirm Booking
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PayPalPaymentModal({
+  appointment,
+  clientId,
+  onClose,
+  onCapture,
+}: {
+  appointment: AppointmentResponse;
+  clientId: string;
+  onClose: () => void;
+  onCapture: (orderId: string) => Promise<void>;
+}) {
+  const currency = (appointment.currency || "USD").toUpperCase();
+
+  if (!clientId) {
+    return (
+      <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
+        <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+          <h3 className="text-xl font-bold">Pay with PayPal</h3>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            PayPal is not configured for this frontend. Add NEXT_PUBLIC_PAYPAL_CLIENT_ID to enable sandbox checkout.
+          </p>
+          <div className="mt-5 flex justify-end">
+            <Button variant="outline" className="rounded-2xl" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+        <h3 className="text-xl font-bold">Pay with PayPal</h3>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          Appointment <span className="font-semibold">{appointment.id}</span>
+        </p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          Amount: <span className="font-semibold">{(appointment.consultationFee ?? 0).toFixed(2)} {currency}</span>
+        </p>
+
+        <div className="mt-5">
+          <PayPalScriptProvider options={{ clientId, currency, intent: "capture" }}>
+            <PayPalButtons
+              style={{ layout: "vertical", shape: "pill", label: "paypal" }}
+              forceReRender={[appointment.id, appointment.consultationFee, currency]}
+              createOrder={async () => {
+                const result = await createPayPalOrder(appointment.id);
+                if (!result.success || !result.data) {
+                  throw new Error(result.error || "Unable to create PayPal order.");
+                }
+                return result.data.orderId;
+              }}
+              onApprove={async (data) => {
+                if (!data.orderID) {
+                  ToastUtils.error("PayPal order ID is missing.");
+                  return;
+                }
+                await onCapture(data.orderID);
+              }}
+              onError={() => {
+                ToastUtils.error("PayPal checkout failed.");
+              }}
+            />
+          </PayPalScriptProvider>
+        </div>
+
+        <div className="mt-4 flex justify-end">
+          <Button variant="outline" className="rounded-2xl" onClick={onClose}>
+            Close
           </Button>
         </div>
       </div>
