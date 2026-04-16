@@ -233,12 +233,14 @@ export function SectionHeader({ title, action }: { title: string; action?: React
 
 export function StatusBadge({ status }: { status: string }) {
   const tone =
-    status === "Completed" || status === "Active" || status === "Verified" || status === "Healthy" || status === "Live"
+    status === "Completed" || status === "Active" || status === "Verified" || status === "Healthy" || status === "Live" || status === "PAID"
       ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
       : status === "CONFIRMED" || status === "Scheduled" || status === "Upcoming"
         ? "bg-sky-500/12 text-sky-700 dark:text-sky-300"
         : status === "PENDING" || status === "Warning" || status === "Review"
           ? "bg-amber-500/12 text-amber-700 dark:text-amber-300"
+          : status === "UNPAID"
+            ? "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300"
           : status === "CANCELLED" || status === "NO_SHOW"
             ? "bg-rose-500/12 text-rose-700 dark:text-rose-300"
             : "bg-rose-500/12 text-rose-700 dark:text-rose-300";
