@@ -57,7 +57,3 @@ configMapGenerator:
     literals:
       - LOGGING_LEVEL_ROOT=WARN
       - LOGGING_LEVEL_COM_HEALIO=INFO
-
-# Production security - enforce pod security standards
-patchesStrategicMerge:
-  - pod_security_patch.yaml
