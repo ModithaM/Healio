@@ -17,7 +17,7 @@ import java.util.Map;
 
 /**
  * AI analysis service backed by Google Gemini (free tier).
- * Get a free API key at https://aistudio.google.com/app/apikey
+ * Get a free API key at <a href="https://aistudio.google.com/app/apikey">...</a>
  */
 @Service
 @RequiredArgsConstructor

@@ -9,11 +9,6 @@ spring:
       discovery:
         locator:
           enabled: true
-      routes:
-        - id: symptom-checker-service
-          uri: lb://symptom-checker-service
-          predicates:
-            - Path=/v1/symptom-checker/**
       httpclient:
         connect-timeout: 60000
         response-timeout: 60s
