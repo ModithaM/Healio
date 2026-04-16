@@ -70,11 +70,11 @@ spec:
       - name: init-scripts
         configMap:
           name: postgres-init
-      volumeClaimTemplates:
-      - metadata:
-          name: postgres-storage
-        spec:
-          accessModes: [ "ReadWriteOnce" ]
-          resources:
-            requests:
-              storage: 10Gi
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
