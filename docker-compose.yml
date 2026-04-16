@@ -14,7 +14,7 @@ services:
     ports:
       - "8888:8888"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8888/actuator/health"]
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8888/application/default"]
       interval: 10s
       timeout: 5s
       retries: 3
