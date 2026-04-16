@@ -4,11 +4,13 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.DecimalMin;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -32,4 +34,9 @@ public class AppointmentCreateRequest {
     private LocalTime appointmentTime;
 
     private String reason;
+
+    @DecimalMin(value = "0.01", message = "consultationFee must be greater than zero")
+    private BigDecimal consultationFee;
+
+    private String currency;
 }

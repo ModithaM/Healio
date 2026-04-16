@@ -33,6 +33,7 @@ import {
   UserRound,
   UsersRound,
   Video,
+  Wallet,
 } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import type { ComponentType, ReactNode } from "react";
@@ -565,9 +566,33 @@ export default function DoctorDashboardPage() {
         )}
         {selectedAppointment && (
           <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4">
-            <div className="w-full max-w-xl rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
+            <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl border border-white/20 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-slate-900">
               <h3 className="text-xl font-bold">Create Prescription</h3>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Appointment: {selectedAppointment.id}</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {[
+                  {
+                    label: "Patient",
+                    value: `${selectedAppointment.patient?.userInfo?.firstName || "Patient"} ${selectedAppointment.patient?.userInfo?.lastName || ""}`.trim(),
+                  },
+                  { label: "Patient Email", value: selectedAppointment.patient?.userInfo?.email || "Not available" },
+                  { label: "Appointment Date", value: selectedAppointment.appointmentDate },
+                  { label: "Appointment Time", value: selectedAppointment.appointmentTime },
+                ].map((field) => (
+                  <div key={field.label} className="rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{field.label}</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-700 dark:text-slate-200">{field.value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Visit context</p>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Reason: {selectedAppointment.reason || "General consultation"}</p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Status: {selectedAppointment.status}</p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  Payment: {selectedAppointment.paymentStatus ?? "UNPAID"} · {(selectedAppointment.consultationFee ?? 0).toFixed(2)} {selectedAppointment.currency ?? "USD"}
+                </p>
+              </div>
               <div className="mt-4 grid gap-3">
                 <input value={prescriptionDiagnosis} onChange={(event) => setPrescriptionDiagnosis(event.target.value)} placeholder="Diagnosis" className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-white/10 dark:bg-slate-800" />
                 <textarea value={prescriptionNotes} onChange={(event) => setPrescriptionNotes(event.target.value)} placeholder="Notes" className="min-h-20 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-slate-800" />
@@ -1127,8 +1152,31 @@ function AppointmentManagement({
                   <h3 className="font-bold">
                     {appointment.patient?.userInfo?.firstName || "Patient"} {appointment.patient?.userInfo?.lastName || ""}
                   </h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {appointment.patient?.userInfo?.email || "Patient contact not available"}
+                  </p>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{appointment.reason || "General consultation"}</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-400">{appointment.appointmentDate} at {appointment.appointmentTime}</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-400">
+                    {appointment.appointmentDate} at {appointment.appointmentTime}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className={cn(
+                      "rounded-full px-2.5 py-1 text-[11px] font-bold",
+                      (appointment.paymentStatus ?? "UNPAID") === "PAID"
+                        ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+                        : (appointment.paymentStatus ?? "UNPAID") === "PENDING"
+                          ? "bg-amber-500/12 text-amber-700 dark:text-amber-300"
+                          : (appointment.paymentStatus ?? "UNPAID") === "FAILED"
+                            ? "bg-rose-500/12 text-rose-700 dark:text-rose-300"
+                            : "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300",
+                    )}>
+                      Payment: {appointment.paymentStatus ?? "UNPAID"}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-950/5 px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                      <Wallet className="h-3.5 w-3.5 text-sky-500" />
+                      {(appointment.consultationFee ?? 0).toFixed(2)} {appointment.currency ?? "USD"}
+                    </span>
+                  </div>
                 </div>
               </div>
               <span className={cn(
@@ -1142,15 +1190,51 @@ function AppointmentManagement({
                       : "bg-amber-500/12 text-amber-700 dark:text-amber-300",
               )}>{appointment.status}</span>
             </div>
+            <div className="mt-4 rounded-[22px] bg-slate-950/[0.03] px-4 py-3 text-sm text-slate-600 dark:bg-white/[0.04] dark:text-slate-300">
+              <p className="font-bold text-slate-700 dark:text-slate-100">Patient visit summary</p>
+              <p className="mt-1">Patient ID: {appointment.patientId}</p>
+              <p className="mt-1">Doctor ID: {appointment.doctorId}</p>
+              <p className="mt-1">Appointment ID: {appointment.id}</p>
+              {appointment.status === "CANCELLED" && appointment.cancelReason && (
+                <p className="mt-1">Cancellation reason: {appointment.cancelReason}</p>
+              )}
+            </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button variant="outline" className="rounded-2xl" onClick={() => onConfirm(appointment)}>Confirm</Button>
-              <Button variant="outline" className="rounded-2xl" onClick={() => onComplete(appointment)}>Complete</Button>
-              <Button variant="outline" className="rounded-2xl" onClick={() => onNoShow(appointment)}>No-show</Button>
-              <Button variant="outline" className="rounded-2xl" onClick={() => onIssuePrescription(appointment)}>
-                <Pill className="h-4 w-4" />
-                Issue Prescription
-              </Button>
-              <Button variant="outline" className="rounded-2xl text-rose-500" onClick={() => onCancel(appointment)}>Cancel</Button>
+              {appointment.status === "PENDING" && (
+                <>
+                  <Button variant="outline" className="rounded-2xl" onClick={() => onConfirm(appointment)}>
+                    Confirm
+                  </Button>
+                  <Button variant="outline" className="rounded-2xl text-rose-500" onClick={() => onCancel(appointment)}>
+                    Cancel
+                  </Button>
+                </>
+              )}
+              {appointment.status === "CONFIRMED" && (
+                <>
+                  <Button variant="outline" className="rounded-2xl" onClick={() => onComplete(appointment)}>
+                    Complete
+                  </Button>
+                  <Button variant="outline" className="rounded-2xl" onClick={() => onNoShow(appointment)}>
+                    No-show
+                  </Button>
+                  <Button variant="outline" className="rounded-2xl text-rose-500" onClick={() => onCancel(appointment)}>
+                    Cancel
+                  </Button>
+                </>
+              )}
+              {!["PENDING", "CONFIRMED"].includes(appointment.status) && (
+                <Button variant="outline" className="rounded-2xl" onClick={() => onIssuePrescription(appointment)}>
+                  <Pill className="h-4 w-4" />
+                  Issue Prescription
+                </Button>
+              )}
+              {appointment.status === "CONFIRMED" && (
+                <Button variant="outline" className="rounded-2xl" onClick={() => onIssuePrescription(appointment)}>
+                  <Pill className="h-4 w-4" />
+                  Issue Prescription
+                </Button>
+              )}
             </div>
           </div>
         ))}
