@@ -2,8 +2,8 @@ services:
   # Infrastructure Services
   config-service:
     build:
-      context: ./services/config-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/config-service/Dockerfile
     container_name: config-service
     environment:
       - SERVER_PORT=8888
@@ -24,8 +24,8 @@ services:
 
   discovery-service:
     build:
-      context: ./services/discovery-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/discovery-service/Dockerfile
     container_name: discovery-service
     environment:
       - SERVER_PORT=8761
@@ -47,8 +47,8 @@ services:
   # Core Microservices
   auth-service:
     build:
-      context: ./services/auth-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/auth-service/Dockerfile
     container_name: auth-service
     environment:
       - SPRING_PROFILES_ACTIVE=docker
@@ -70,8 +70,8 @@ services:
 
   user-service:
     build:
-      context: ./services/user-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./services/user-service/Dockerfile
     container_name: user-service
     environment:
       - SPRING_PROFILES_ACTIVE=docker
