@@ -8,6 +8,8 @@
     "dependency:client": "cd client/healio && pnpm install",
     "dependency": "pnpm run dependency:services && pnpm run dependency:client",
     "build": "mvn clean package -DskipTests",
+    "build:client": "cd client/healio && pnpm run build",
+    "build:docker": "pnpm run build && docker compose build",
     "start": "node scripts/sequential-startup.js",
     "dev": "node scripts/sequential-startup.js",
     "stop": "pkill -f 'mvn spring-boot:run' || true",
