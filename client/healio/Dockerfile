@@ -8,8 +8,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install pnpm and dependencies
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+# Install pnpm v9 and dependencies
+RUN npm install -g pnpm@9 && pnpm install --frozen-lockfile
 
 # Stage 2: Build
 FROM node:21.7.0-alpine AS builder
@@ -19,8 +19,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm v9
+RUN npm install -g pnpm@9
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
@@ -36,8 +36,8 @@ FROM node:21.7.0-alpine
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm v9
+RUN npm install -g pnpm@9
 
 # Create non-root user
 RUN addgroup -S appuser && adduser -S appuser -G appuser
