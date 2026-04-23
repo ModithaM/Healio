@@ -5,7 +5,7 @@ WORKDIR /app
 # Create non-root user
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 
-COPY target/patient-service-0.0.1-SNAPSHOT.jar /app.jar
+COPY target/*.jar /app.jar
 
 # Change ownership
 RUN chown -R appuser:appuser /app

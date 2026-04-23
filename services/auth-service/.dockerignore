@@ -2,7 +2,6 @@
 .gitignore
 .idea
 *.iml
-target/
 *.log
 README.md
 .DS_Store
