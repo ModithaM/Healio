@@ -23,6 +23,8 @@ All backend services are implemented using **Spring Boot** microservices archite
 | **doctor-service** | Handles doctor profiles, specializations, availability, and scheduling preferences |
 | **appointment-service** | Manages booking, cancellation, and tracking of healthcare appointments |
 | **telemedicine-service** | Enables virtual consultations, video sessions, and remote care between patients and doctors |
+| **notification-service** | Sends notifications to users via email, SMS, and in-app alerts |
+| **symptom-checker-service** | AI-powered symptom assessment and preliminary diagnosis suggestions |
 
 ---
 
@@ -30,22 +32,35 @@ All backend services are implemented using **Spring Boot** microservices archite
 
 ```
 Healio/
-├── client/                      # Frontend application
+├── client/                         # Frontend application
 ├── services/
-│   ├── config-service/          # Configuration server (Spring Cloud Config)
-│   ├── discovery-service/       # Eureka service registry (Spring Cloud)
-│   ├── gateway/                 # API Gateway (Spring Cloud Gateway)
-│   ├── auth-service/            # Authentication service (Spring Boot)
-│   ├── user-service/            # User management service (Spring Boot)
-│   ├── patient-service/         # Patient management service (Spring Boot)
-│   ├── doctor-service/          # Doctor management service (Spring Boot)
-│   ├── appointment-service/     # Appointment management service (Spring Boot)
-│   └── telemedicine-service/    # Telemedicine service (Spring Boot)
-├── infra/                       # Infrastructure configuration (Docker, K8s, etc.)
-├── config/                      # Configuration files for services
-├── scripts/                     # Automation and deployment scripts
-├── package.json                 # Root project configuration
-├── pom.xml                      # Maven parent POM for all services
+│   ├── config-service/             # Configuration server (Spring Cloud Config)
+│   ├── discovery-service/          # Eureka service registry (Spring Cloud)
+│   ├── gateway/                    # API Gateway (Spring Cloud Gateway)
+│   ├── auth-service/               # Authentication service (Spring Boot)
+│   ├── user-service/               # User management service (Spring Boot)
+│   ├── patient-service/            # Patient management service (Spring Boot)
+│   ├── doctor-service/             # Doctor management service (Spring Boot)
+│   ├── appointment-service/        # Appointment management service (Spring Boot)
+│   ├── telemedicine-service/       # Telemedicine service (Spring Boot)
+│   ├── notification-service/       # Notification service (Spring Boot)
+│   └── symptom-checker-service/    # AI-powered symptom checker service (Spring Boot)
+├── infra/                          # Infrastructure configuration (Docker, K8s, etc.)
+├── k8s/                            # Kubernetes deployment configurations
+│   ├── base/                       # Base Kubernetes resources
+│   ├── overlays/                   # Environment-specific overlays (dev, staging, prod)
+│   ├── services/                   # Service-specific deployments
+│   ├── database/                   # Database deployment configs
+│   ├── frontend/                   # Frontend deployment configs
+│   ├── monitoring/                 # Monitoring and HPA configs
+│   ├── deploy.sh                   # Deployment automation script
+│   ├── kustomization.yaml          # Kustomize configuration
+│   └── README.md                   # Kubernetes documentation
+├── config/                         # Configuration files for services
+├── scripts/                        # Automation and deployment scripts
+├── package.json                    # Root project configuration
+├── pom.xml                         # Maven parent POM for all services
+├── docker-compose.yml              # Docker Compose configuration
 └── README.md
 ```
 
@@ -92,7 +107,14 @@ This command installs both backend service dependencies (Maven) and frontend dep
 pnpm run build
 ```
 
-#### Run all services:
+#### Build Docker images for all services:
+```bash
+pnpm run build:docker
+```
+
+This builds all services and creates Docker images using `docker-compose.yml`.
+
+#### Run all services (Locally):
 ```bash
 pnpm run start
 ```
@@ -122,6 +144,27 @@ mvn clean install          # Build the service
 mvn spring-boot:run        # Run the service
 mvn test                   # Run tests
 ```
+
+---
+
+## Deployment
+
+### Kubernetes
+The project includes complete Kubernetes deployment configurations using Kustomize for environment-based overlays (dev, staging, prod).
+
+**Quick Deploy:**
+```bash
+# Development
+./k8s/deploy.sh dev
+
+# Staging
+./k8s/deploy.sh staging
+
+# Production
+./k8s/deploy.sh prod
+```
+
+See `k8s/README.md` for comprehensive Kubernetes setup, management commands, and troubleshooting guides.
 
 ---
 
