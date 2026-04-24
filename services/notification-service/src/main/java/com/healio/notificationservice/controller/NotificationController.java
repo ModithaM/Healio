@@ -2,6 +2,8 @@ package com.healio.notificationservice.controller;
 
 import com.healio.notificationservice.dto.CreateNotificationRequest;
 import com.healio.notificationservice.dto.NotificationResponse;
+import com.healio.notificationservice.dto.SessionNotificationRequest;
+import com.healio.notificationservice.dto.SessionNotificationResponse;
 import com.healio.notificationservice.service.NotificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v1/api/notifications")
+@RequestMapping({"/v1/api/notifications", "/api/notifications"})
 @RequiredArgsConstructor
 public class NotificationController {
 
@@ -28,6 +30,13 @@ public class NotificationController {
     public ResponseEntity<NotificationResponse> createNotification(@Valid @RequestBody CreateNotificationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(notificationService.createNotification(request));
+    }
+
+    @PostMapping("/session-created")
+    public ResponseEntity<SessionNotificationResponse> createSessionNotification(
+            @Valid @RequestBody SessionNotificationRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(notificationService.createSessionNotification(request));
     }
 
     @GetMapping("/{userId}")
