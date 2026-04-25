@@ -1,13 +1,18 @@
 package com.healio.telemedicineservice.service.impl;
 
 import com.healio.telemedicineservice.client.NotificationServiceClient;
+import com.healio.telemedicineservice.client.PatientServiceClient;
+import com.healio.telemedicineservice.client.UserServiceClient;
 import com.healio.telemedicineservice.dto.CreateTelemedicineSessionRequest;
 import com.healio.telemedicineservice.dto.CreateNotificationRequest;
 import com.healio.telemedicineservice.dto.JoinDetailsResponse;
+import com.healio.telemedicineservice.dto.PatientProfileResponseDto;
+import com.healio.telemedicineservice.dto.SessionNotificationRequest;
 import com.healio.telemedicineservice.dto.StartSessionResponse;
 import com.healio.telemedicineservice.dto.TelemedicineSessionResponse;
 import com.healio.telemedicineservice.dto.UpdateNotesRequest;
 import com.healio.telemedicineservice.dto.UpdateTelemedicineSessionRequest;
+import com.healio.telemedicineservice.dto.UserDto;
 import com.healio.telemedicineservice.entity.TelemedicineSession;
 import com.healio.telemedicineservice.enums.SessionStatus;
 import com.healio.telemedicineservice.exception.TelemedicineBadRequestException;
@@ -28,6 +33,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -35,12 +41,15 @@ import java.util.List;
 @Slf4j
 public class TelemedicineSessionServiceImpl implements TelemedicineSessionService {
     private static final String TELEMEDICINE_SOURCE = "telemedicine-service";
+    private static final Pattern E164_PATTERN = Pattern.compile("^\\+[1-9]\\d{7,14}$");
 
     private final TelemedicineSessionRepository sessionRepository;
     private final TelemedicineSessionMapper sessionMapper;
     private final AgoraChannelNameGenerator channelNameGenerator;
     private final AgoraTokenService agoraTokenService;
     private final NotificationServiceClient notificationServiceClient;
+    private final UserServiceClient userServiceClient;
+    private final PatientServiceClient patientServiceClient;
 
     private static final DateTimeFormatter SESSION_TIME_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy 'at' h:mm a");
 
@@ -209,16 +218,14 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
 
     private void sendSessionCreatedNotifications(TelemedicineSession session) {
         String scheduledTime = session.getScheduledStartTime().format(SESSION_TIME_FORMATTER);
-        notifySafely(CreateNotificationRequest.builder()
+        notifySessionCreatedSafely(SessionNotificationRequest.builder()
                 .userId(session.getPatientId())
-                .role("PATIENT")
-                .type("SESSION_CREATED")
-                .title("New Telemedicine Session Scheduled")
-                .message("A doctor has scheduled \"" + session.getSessionTitle() + "\" for you on " + scheduledTime + ".")
+                .phoneNumber(getPatientPhoneNumber(session.getPatientId()))
+                .sessionTitle(session.getSessionTitle())
                 .referenceId(session.getId())
                 .sourceService(TELEMEDICINE_SOURCE)
                 .actionUrl(buildTelemedicineActionUrl("PATIENT", session.getId()))
-                .scheduledFor(session.getScheduledStartTime())
+                .scheduledTime(session.getScheduledStartTime())
                 .build());
 
         notifySafely(CreateNotificationRequest.builder()
@@ -290,6 +297,71 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
             log.warn("Unable to send {} notification for reference {} to user {}",
                     request.getType(), request.getReferenceId(), request.getUserId(), exception);
         }
+    }
+
+    private void notifySessionCreatedSafely(SessionNotificationRequest request) {
+        try {
+            notificationServiceClient.createSessionNotification(request);
+        } catch (Exception exception) {
+            log.warn("Unable to send session-created notification to user {}", request.getUserId(), exception);
+        }
+    }
+
+    private String getPatientPhoneNumber(String patientId) {
+        try {
+            UserDto user = userServiceClient.getUserById(patientId).getBody();
+            if (user != null && user.getUserDetails() != null) {
+                String phoneNumber = normalizePhoneNumber(user.getUserDetails().getPhoneNumber());
+                if (phoneNumber != null) {
+                    log.info("Resolved patient phone number from user-service for user {}", patientId);
+                    return phoneNumber;
+                }
+            }
+        } catch (Exception exception) {
+            log.warn("Unable to load patient phone number for user {}", patientId, exception);
+        }
+
+        return getEmergencyContactPhoneNumber(patientId);
+    }
+
+    private String getEmergencyContactPhoneNumber(String patientId) {
+        try {
+            PatientProfileResponseDto patientProfile = patientServiceClient.getPatientProfileByUserId(patientId).getBody();
+            if (patientProfile == null) {
+                log.warn("No patient profile found for user {}", patientId);
+                return null;
+            }
+
+            String emergencyContactPhone = normalizePhoneNumber(patientProfile.getEmergencyContactPhone());
+            if (emergencyContactPhone == null) {
+                log.warn("No usable emergency contact phone number found for user {}", patientId);
+                return null;
+            }
+
+            log.info("Resolved fallback SMS number from patient-service emergency contact for user {}", patientId);
+            return emergencyContactPhone;
+        } catch (Exception exception) {
+            log.warn("Unable to load emergency contact phone number for user {}", patientId, exception);
+            return null;
+        }
+    }
+
+    private String normalizePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            return null;
+        }
+
+        String normalized = phoneNumber.replaceAll("[\\s-]", "");
+        if (E164_PATTERN.matcher(normalized).matches()) {
+            return normalized;
+        }
+        if (normalized.matches("^0\\d{9}$")) {
+            return "+94" + normalized.substring(1);
+        }
+        if (normalized.matches("^94\\d{9}$")) {
+            return "+" + normalized;
+        }
+        return null;
     }
 
     private Specification<TelemedicineSession> buildSpecification(String doctorId, String patientId, SessionStatus status) {

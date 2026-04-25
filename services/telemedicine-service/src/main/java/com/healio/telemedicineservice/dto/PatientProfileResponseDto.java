@@ -5,9 +5,10 @@ import lombok.Data;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class UserDto {
+public class PatientProfileResponseDto {
+
     private String id;
-    private String username;
-    private String email;
-    private UserDetailsDto userDetails;
+    private String userId;
+    private String emergencyContactName;
+    private String emergencyContactPhone;
 }

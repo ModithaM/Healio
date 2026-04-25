@@ -1,6 +1,7 @@
 package com.healio.telemedicineservice.client;
 
 import com.healio.telemedicineservice.dto.CreateNotificationRequest;
+import com.healio.telemedicineservice.dto.SessionNotificationRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,4 +12,7 @@ public interface NotificationServiceClient {
 
     @PostMapping
     ResponseEntity<Void> createNotification(@RequestBody CreateNotificationRequest request);
+
+    @PostMapping("/session-created")
+    ResponseEntity<Void> createSessionNotification(@RequestBody SessionNotificationRequest request);
 }
